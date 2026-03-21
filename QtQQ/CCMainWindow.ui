@@ -10,10 +10,22 @@
     <height>680</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="minimumSize">
    <size>
     <width>280</width>
     <height>680</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>280</width>
+    <height>16777215</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -134,7 +146,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="palcehold2">
+         <widget class="QPushButton" name="placehold2">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -801,8 +813,14 @@ font:75 12pt &quot;微软雅黑&quot;;</string>
             <height>24</height>
            </size>
           </property>
+          <property name="focusPolicy">
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
+          </property>
           <property name="text">
            <string>应用宝</string>
+          </property>
+          <property name="flat">
+           <bool>false</bool>
           </property>
          </widget>
         </item>

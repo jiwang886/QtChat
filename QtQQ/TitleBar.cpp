@@ -134,18 +134,11 @@ void TitleBar::mouseDoubleClickEvent(QMouseEvent* event)	//鼠标双击事件
 {
 	if (m_buttonType == MIN_MAX_BUTTON)		//如果标题栏按纽类型是最小化、最大化、关闭按钮
 	{
-		//if (parentWidget()->isMaximized())	//如果父窗口已经最大化
-		//{
-		//	onButtonRestoreClicked();			//调用还原按纽的槽函数，恢复窗口到最大化前的状态
-		//}
-		//else								//如果父窗口没有最大化
-		//{
-		//	onButtonMaxClicked();				//调用最大化按纽的槽函数，将窗口最大化
-		//}
 		if(m_pButtonMax->isVisible())
 			onButtonRestoreClicked();				//调用关闭按纽的槽函数，恢复窗口到最大化前的状态
 		else
 			onButtonMaxClicked();				//调用最大化按纽的槽函数，将窗口最大化
+		event->accept();						//接受事件，表示事件已经被处理，不再向上传递
 	}
 	return QWidget::mouseDoubleClickEvent(event);	
 	//调用基类的鼠标双击事件处理函数，确保其他事件处理正常进行

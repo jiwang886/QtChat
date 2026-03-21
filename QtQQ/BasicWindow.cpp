@@ -8,12 +8,12 @@
 #include "CommonUtils.h"
 #include "NotifyManager.h"
 BasicWindow::BasicWindow(QWidget *parent)
-	: QDialog(parent)
+	: QDialog(parent), mousePressed(false), m_TitleBar(nullptr)
 {
 	m_backGroundColor = CommonUtils::getDefaultSkinColor();		//获取默认皮肤颜色
 	//setAttribute(Qt::WA_TranslucentBackground, true);	//设置窗口背景透明
 	setWindowFlags(Qt::FramelessWindowHint);		//设置窗口无边框
-	connect(NotifyManager::getInstance(), SIGNAL(SignalSkinChanged(const QColor & color)), this, SLOT(onSignalSkinChanged(const QColor & color)));
+	connect(NotifyManager::getInstance(), SIGNAL(signalSkinChanged(const QColor &)), this, SLOT(onSignalSkinChanged(const QColor &)));
 }
 
 BasicWindow::~BasicWindow()
@@ -144,6 +144,7 @@ void BasicWindow::mousePressEvent(QMouseEvent* event)		//鼠标按下事件
 		//this->pos()获取窗口在屏幕上的位置，计算鼠标按下时的位置与窗口位置的差值，存储在mousePoint变量中
 		mousePoint = event->globalPosition().toPoint() - this->pos();	//计算鼠标按下时的位置与窗口位置的差值，存储在mousePoint变量中
 		//获取的时窗口左上角的位置
+		event->accept();					//接受事件，防止事件继续传播
 	}
 }
 void BasicWindow::mouseMoveEvent(QMouseEvent* event)		//鼠标移动事件
