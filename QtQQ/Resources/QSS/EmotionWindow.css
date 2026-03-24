@@ -61,5 +61,5 @@ QLabel#emotionLabelItem:hover{
  }
  
  QWidget#topWidget{
-	 border-image:url(:Resources/MainWindow/emoback.png);
+	 border-image:url(:/Resources/MainWindow/emoback.png);
  }

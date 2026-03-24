@@ -3,7 +3,16 @@
 #include <QPainter>
 #include "SkinWindow.h"
 #include <QTimer>
+#include <QEvent>
 #include "SysTray.h"
+#include "NotifyManager.h"
+#include <QTreeWidgetItem>
+#include "RootContactItem.h"
+#include "ContactItem.h"
+#include "WindowManager.h"
+#include "TalkWindowShell.h"
+#include <QApplication>
+
 class CoustomProxyStyle :public QProxyStyle		//自定义样式类，继承自QProxyStyle，可以重写其中的绘制方法来实现自定义的界面风格
 {
 public:
@@ -66,8 +75,17 @@ void CCMainWindow::initControl()		//初始化控件
 	ui.bottomLayout_up->addWidget(addOtherAppExtension(":/Resources/MainWindow/app/app_9.png", "app_9"));
 	ui.bottomLayout_up->addStretch();//添加一个弹性空间，使得其他应用部件靠左对齐
 
+	initContactTree();//初始化联系人树形控件，设置树形控件的内容和结构，例如添加联系人分组、联系人等
+
+	ui.lineEdit->installEventFilter(this);		//安装事件过滤器，使得主窗口能够捕获lineEdit的事件，例如鼠标点击事件等
+	ui.searchLineEdit->installEventFilter(this);	//安装事件过滤器，使得主窗口能够捕获searchWidget的事件，例如鼠标点击事件等
+
 	connect(ui.sysmin, &QPushButton::clicked, this, &CCMainWindow::onShowMin);
 	connect(ui.sysclose, &QPushButton::clicked,this, &CCMainWindow::onShowClose);
+
+	connect(NotifyManager::getInstance(), &NotifyManager::signalSkinChanged, [=]() {
+		updateSearchStyle();		//连接NotifyManager的signalSkinChanged信号到updateSearchStyle槽函数，当皮肤改变时更新搜索框的样式
+		});//不连接会有bug，不会立即改变搜索框的样式，只有在下一次触发事件时才会改变
 
 	SysTray* sysTray = new SysTray(this);		//创建一个系统托盘对象，作为主窗口的子对象
 
@@ -167,6 +185,40 @@ void CCMainWindow::resizeEvent(QResizeEvent* event)
 	BasicWindow::resizeEvent(event);		//调用父类的resizeEvent函数，进行默认的窗口大小调整操作
 }
 
+
+void CCMainWindow::updateSearchStyle()
+{
+	ui.searchWidget->setStyleSheet(QString("QWidget#searchWidget{background-color:rgba(%1,%2,%3,50); border-bottom:1px solid rgba(%1,%2,%3,30)}\
+											QPushButton#searchBtn{border-image:url(:/Resources/MainWindow/search/main_search_deldown.png);}")
+											.arg(m_backGroundColor.red())
+											.arg(m_backGroundColor.green())
+											.arg(m_backGroundColor.blue()));
+}
+
+
+bool CCMainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+	if (ui.searchLineEdit == watched)
+	{
+		if (event->type() == QEvent::FocusIn)	//如果事件类型是获取焦点事件，即用户点击了搜索输入框
+		{
+			ui.searchWidget->setStyleSheet(QString("QWidget#searchWidget{background-color:rgb(255,255,255); border-bottom:1px solid rgba(%1,%2,%3,100)}\
+													QPushButton#searchBtn{border-image:url(:/Resources/MainWindow/search/main_search_deldown.png);}\
+													QPushButton#searchBtn:hover{border-image:url(:/Resources/MainWindow/search/main_search_delhighlight.png);}\
+													QPushButton#searchBtn:pressed{border-image:url(:/Resources/MainWindow/search/main_search_delhighdown.png);}")
+													.arg(m_backGroundColor.red())
+													.arg(m_backGroundColor.green())
+													.arg(m_backGroundColor.blue()));
+			//将搜索部件的样式表设置为白色背景，表示搜索输入框处于激活状态,并且设置底部边框为1像素，突出显示搜索输入框
+		}
+		else if (event->type() == QEvent::FocusOut)
+		{
+			updateSearchStyle();		//调用updateSearchStyle函数，更新搜索部件的样式，使其恢复到默认状态
+		}
+	}
+	return false;
+}
+
 void CCMainWindow::onAppIconClicked()
 {
 	//获取发送信号的按钮对象，通过sender()函数来获取当前发送信号的对象，并将其转换为QPushButton类型的指针
@@ -176,3 +228,135 @@ void CCMainWindow::onAppIconClicked()
 		skinWindow->show();
 	}
 }
+
+void CCMainWindow::initContactTree()
+{
+	//初始化联系人树形控件，设置树形控件的内容和结构，例如添加联系人分组、联系人等
+	//展开与收缩的信号
+	connect(ui.treeWidget, &QTreeWidget::itemClicked, this, &CCMainWindow::onItemClicked);	
+	//当树形控件中的项目被点击时会触发这个槽函数，执行相应的操作，例如显示联系人信息等
+	connect(ui.treeWidget, &QTreeWidget::itemDoubleClicked, this, &CCMainWindow::onItemDoubleClicked);
+	//当树形控件中的项目被双击时会触发这个槽函数，执行相应的操作，例如打开聊天窗口等
+	connect(ui.treeWidget, &QTreeWidget::itemExpanded, this, &CCMainWindow::onItemExpanded);	
+	//当树形控件中的项目被展开时会触发这个槽函数，执行相应的操作，例如加载子项目等
+	connect(ui.treeWidget, &QTreeWidget::itemCollapsed, this, &CCMainWindow::onItemCollapsed);	
+	//当树形控件中的项目被收缩时会触发这个槽函数，执行相应的操作，例如释放子项目等
+	
+	//初始化根节点
+	QTreeWidgetItem* pRootGroupItem = new QTreeWidgetItem(ui.treeWidget);
+	pRootGroupItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);		//设置根节点显示展开指示器，即使没有子节点也显示展开指示器
+	pRootGroupItem->setData(0, Qt::UserRole, 0);	//设置根节点的数据，使用Qt::UserRole作为数据的角色，值为0，表示根节点的类型或标识
+
+	RootContactItem* pItemName = new RootContactItem(true,ui.treeWidget);
+
+	QString strGroupName = "神人科技";		//设置联系人分组的名称
+	pItemName->setText(strGroupName);		//设置联系人分组节点的文本
+	
+	//插入分组节点
+	ui.treeWidget->addTopLevelItem(pRootGroupItem);		//将联系人分组节点插入到树形控件的顶层位置，位置索引为0，即第一个位置
+	ui.treeWidget->setItemWidget(pRootGroupItem, 0, pItemName);		
+	//将联系人分组节点的文本设置为pItemName，将其显示在树形控件中
+
+	QStringList sCompDeps;	
+	sCompDeps << "公司" << "人事" << "研发" << "市场";
+	for (int i = 0; i < sCompDeps.size(); i++)
+	{
+		addCompanyDeps(pRootGroupItem,sCompDeps.at(i));
+	}
+
+	
+}
+void CCMainWindow::addCompanyDeps(QTreeWidgetItem* pRootGroupItem, const QString& sDeps)
+{
+	QTreeWidgetItem* pChild = new QTreeWidgetItem;
+	
+
+	QPixmap pix;
+	pix.load(":/Resources/MainWindow/head_mask.png");
+
+	pChild->setData(0, Qt::UserRole, 1);	//设置子节点的数据，使用Qt::UserRole作为数据的角色，值为1，表示部门节点的类���或标识
+	pChild->setData(0, Qt::UserRole + 1, QString::number((int)pChild));//设置子节点的额外数据，使用Qt::UserRole + 1作为数据的角色，值为部门节点的唯一标识，这里使用部门节点的内存地址转换为字符串来表示
+
+	ContactItem* pContactItem = new ContactItem(ui.treeWidget);
+	pContactItem->setHeadPixmap(getRoundImage(QPixmap(":/Resources/MainWindow/girl.png"),pix,pContactItem->getHeadLabelSize()));
+	pContactItem->setUserName(sDeps);		//设置部门节点的文本为部门名称
+
+	pRootGroupItem->addChild(pChild);		//将部门节点添加到根节点的子节点列表中
+	ui.treeWidget->setItemWidget(pChild, 0, pContactItem);		//将部门节点的文本设置为pContactItem，将其显示在树形控件中
+
+	m_groupMap.insert(pChild, sDeps);		//将部门节点和部门名称的映射关系插入到m_groupMap中，方便后续通过部门节点来获取部门名称
+}
+
+void CCMainWindow::onItemClicked(QTreeWidgetItem* item, int column)
+{
+	bool bIsChild = item->data(0, Qt::UserRole).toBool();		//判断被点击的项目是否是子节点，即部门节点，通过检查项目的数据来确定
+	if (!bIsChild)
+	{
+		item->setExpanded(!item->isExpanded());	//如果被点击的项目不是子节点，即根节点，则切换其展开状态，即如果当前是展开状态则收缩，如果当前是收缩状态则展开
+
+	}
+}
+
+void CCMainWindow::onItemExpanded(QTreeWidgetItem* item)
+{
+	bool bIsChild = item->data(0, Qt::UserRole).toBool();		//判断被点击的项目是否是子节点，即部门节点，通过检查项目的数据来确定
+	if (!bIsChild)
+	{
+		//dynamic_cast是C++中的一个运算符，用于在类层次结构中进行安全的类型转换。它可以将一个指针或引用转换为另一个类型的指针或引用，如果转换不合法则返回nullptr或抛出异常。
+		//在这里，使用dynamic_cast将被点击的项目的文本转换为RootContactItem类型的指针，以获取根节点的文本对象，从而设置其展开状态
+		//将基类对象指针转换为派生类对象指针
+		RootContactItem* pRootItem = dynamic_cast<RootContactItem*>(ui.treeWidget->itemWidget(item, 0));		//将被点击的项目的文本转换为RootContactItem类型的指针，获取根节点的文本对象
+		if(pRootItem)
+			pRootItem->setExpanded(true);		//如果被点击的项目不是子节点，即根节点，则设置其展开状态为true，即展开
+	}
+}
+
+void CCMainWindow::onItemCollapsed(QTreeWidgetItem* item)
+{
+	bool bIsChild = item->data(0, Qt::UserRole).toBool();		//判断被点击的项目是否是子节点，即部门节点，通过检查项目的数据来确定
+	if (!bIsChild)
+	{
+		RootContactItem* pRootItem = dynamic_cast<RootContactItem*>(ui.treeWidget->itemWidget(item, 0));		//将被点击的项目的文本转换为RootContactItem类型的指针，获取根节点的文本对象
+		pRootItem->setExpanded(false);		//如果被点击的项目不是子节点，即根节点，则设置其展开状态为false，即收缩
+	}
+}
+
+void CCMainWindow::onItemDoubleClicked(QTreeWidgetItem* item, int column)
+{
+	bool bIsChild = item->data(0, Qt::UserRole).toBool();		//判断被双击的项目是否是子节点，即部门节点，通过检查项目的数据来确定
+	if (bIsChild)
+	{
+		QString strGroup = m_groupMap.value(item);		//获取被双击的项目的父节点的数据，即部门节点的数据，作为分组ID
+		if (strGroup == "公司")
+		{
+			WindowManager::getInstance()->addNewTalkWindow(item->data(0,Qt::UserRole+1).toString(),COMPANY);
+			//调用WindowManager的getInstance函数获取WindowManager的单例对象，并调用函数来显示聊天窗口，参数为分组ID，即部门名称
+		}
+		else if (strGroup == "人事")
+		{
+			WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), PERSONELGROUP);
+		}
+		else if (strGroup == "研发")
+		{
+			WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), DEVELOPMENTGROUP);
+		}
+		else if (strGroup == "市场")
+		{
+			WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), MARKETGROUP);
+		}
+	}
+}
+
+void CCMainWindow::mousePressEvent(QMouseEvent* event)
+{
+	if (qApp->widgetAt(event->pos()) != ui.searchLineEdit && ui.searchLineEdit->hasFocus())
+	{
+		ui.searchLineEdit->clearFocus();	//当用户点击了窗口的其他区域时，清除搜索输入框的焦点，使其失去激活状态
+	}
+	else if (qApp->widgetAt(event->pos()) != ui.lineEdit && ui.lineEdit->hasFocus())
+	{
+		ui.lineEdit->clearFocus();		//当用户点击了窗口的其他区域时，清除用户名输入框的焦点，使其失去激活状态
+	}
+	BasicWindow::mousePressEvent(event);		//调用父类的mousePressEvent函数，进行默认的鼠标点击事件处理操作，例如拖动窗口等
+}
+

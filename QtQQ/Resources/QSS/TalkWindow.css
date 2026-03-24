@@ -15,23 +15,23 @@ QWidget#frameWidhet{
 }
 
 QPushButton#sysmin {
-   border-image: url(:Resources/MainWindow/sysbtn_min_normal.png); 
+   border-image: url(:/Resources/MainWindow/sysbtn_min_normal.png); 
 }
 QPushButton#sysmin:hover {
-   border-image: url(:Resources/MainWindow/sysbtn_min_hover.png); 
+   border-image: url(:/Resources/MainWindow/sysbtn_min_hover.png); 
 }
 QPushButton#sysmin:pressed {
-   border-image: url(:Resources/MainWindow/sysbtn_min_down.png); 
+   border-image: url(:/Resources/MainWindow/sysbtn_min_down.png); 
 }
 
 QPushButton#sysclose {
-   border-image: url(:Resources/MainWindow/sysbtn_close_normal.png); 
+   border-image: url(:/Resources/MainWindow/sysbtn_close_normal.png); 
 }
 QPushButton#sysclose:hover {
-   border-image: url(:Resources/MainWindow/sysbtn_close_hover.png); 
+   border-image: url(:/Resources/MainWindow/sysbtn_close_hover.png); 
 }
 QPushButton#sysclose:pressed {
-   border-image: url(:Resources/MainWindow/sysbtn_close_down.png); 
+   border-image: url(:/Resources/MainWindow/sysbtn_close_down.png); 
 }
 
 QLabel#nameLabel {
@@ -45,7 +45,7 @@ QLabel#signLabel {
 }
 
 QLabel#skinLabel {
-    border-image:url(:Resources/MainWindow/skin.png);
+    border-image:url(:/Resources/MainWindow/skin.png);
     border-width: 2px;
     border-bottom-right-radius:4px;
 }
@@ -57,15 +57,15 @@ border-bottom-left-radius:4px;
 }
 
 QPushButton#rightSpliterBtn {
-   border-image: url(:Resources/MainWindow/aio_splitbutton_right_normal.png); 
+   border-image: url(:/Resources/MainWindow/aio_splitbutton_right_normal.png); 
    border-width:0px;
 }
 QPushButton#rightSpliterBtn:hover {
-   border-image: url(:Resources/MainWindow/aio_splitbutton_right_hover.png); 
+   border-image: url(:/Resources/MainWindow/aio_splitbutton_right_hover.png); 
    border-width:0px;
 }
 QPushButton#rightSpliterBtn:pressed {
-   border-image: url(:Resources/MainWindow/aio_splitbutton_right_down.png); 
+   border-image: url(:/Resources/MainWindow/aio_splitbutton_right_down.png); 
    border-width:0px;
 }
 
@@ -108,128 +108,128 @@ QToolButton#sendBtn::menu-button {
 }
 
 QToolButton#sendBtn::menu-arrow {
-    image: url(:Resources/MainWindow/aio_setting_white_normal.png);
+    image: url(:/Resources/MainWindow/aio_setting_white_normal.png);
 }
 
 QPushButton#faceBtn {
-   border-image: url(:Resources/MainWindow/aio_quickbar_face.png); 
+   border-image: url(:/Resources/MainWindow/aio_quickbar_face.png); 
 }
 QPushButton#faceBtn:hover {
-   background-image:url(:Resources/MainWindow/aio_quickbar_face_hover.png);
+   background-image:url(:/Resources/MainWindow/aio_quickbar_face_hover.png);
    background-position:center;
    border-image:url(:Resources/MainWindow/2014_btn_hover.gft.png);
    border-width:2px;
 }
 QPushButton#faceBtn:pressed, QPushButton#faceBtn:checked {
-   background-image:url(:Resources/MainWindow/aio_quickbar_face_hover.png);
+   background-image:url(:/Resources/MainWindow/aio_quickbar_face_hover.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_down.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_down.gft.png);
    border-width:2px;
 }
 
 QPushButton#fileopenBtn {
-   border-image: url(:Resources/MainWindow/fileopen.png); 
+   border-image: url(:/Resources/MainWindow/fileopen.png); 
 }
 QPushButton#fileopenBtn:hover {
-   background-image:url(:Resources/MainWindow/fileopen_hover.png);
+   background-image:url(:/Resources/MainWindow/fileopen_hover.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_hover.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_hover.gft.png);
    border-width:2px;
 }
 QPushButton#fileopenBtn:pressed, QPushButton#fileopenBtn:checked {
-   background-image:url(:Resources/MainWindow/fileopen_press.png);
+   background-image:url(:/Resources/MainWindow/fileopen_press.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_down.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_down.gft.png);
    border-width:2px;
 }
 
 QPushButton#addtoolbtn {
    background-color:transparent;
-   background-image: url(:Resources/MainWindow/aio_toobar_add.png); 
+   background-image: url(:/Resources/MainWindow/aio_toobar_add.png); 
    background-position:center;
 }
 QPushButton#addtoolbtn:hover {
-   background-image:url(:Resources/MainWindow/aio_toobar_add.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_add.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_hover.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_hover.gft.png);
    border-width:2px;
 }
 QPushButton#addtoolbtn:pressed {
-   background-image:url(:Resources/MainWindow/aio_toobar_add.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_add.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_down.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_down.gft.png);
    border-width:2px;
 }
 
 QPushButton#addhumanBtn {
    background-color:transparent;
-   background-image: url(:Resources/MainWindow/aio_toobar_addhuman.png); 
+   background-image: url(:/Resources/MainWindow/aio_toobar_addhuman.png); 
    background-position:center;
 }
 QPushButton#addhumanBtn:hover {
-   background-image:url(:Resources/MainWindow/aio_toobar_addhuman.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_addhuman.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_hover.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_hover.gft.png);
    border-width:2px;
 }
 QPushButton#addhumanBtn:pressed {
-   background-image:url(:Resources/MainWindow/aio_toobar_addhuman.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_addhuman.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_down.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_down.gft.png);
    border-width:2px;
 }
 
 QPushButton#appBtn {
    background-color:transparent;
-   background-image: url(:Resources/MainWindow/aio_toobar_app.png); 
+   background-image: url(:/Resources/MainWindow/aio_toobar_app.png); 
    background-position:center;
 }
 QPushButton#appBtn:hover {
-   background-image:url(:Resources/MainWindow/aio_toobar_app.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_app.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_hover.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_hover.gft.png);
    border-width:2px;
 }
 QPushButton#appBtn:pressed {
-   background-image:url(:Resources/MainWindow/aio_toobar_app.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_app.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_down.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_down.gft.png);
    border-width:2px;
 }
 
 QPushButton#videoBtn {
    background-color:transparent;
-   background-image: url(:Resources/MainWindow/aio_toobar_report.png); 
+   background-image: url(:/Resources/MainWindow/aio_toobar_report.png); 
    background-position:center;
 }
 QPushButton#videoBtn:hover {
-   background-image:url(:Resources/MainWindow/aio_toobar_report.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_report.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_hover.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_hover.gft.png);
    border-width:2px;
 }
 QPushButton#videoBtn:pressed {
-   background-image:url(:Resources/MainWindow/aio_toobar_report.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_report.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_down.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_down.gft.png);
    border-width:2px;
 }
 
 QPushButton#toolsetBtn {
    background-color:transparent;
-   background-image: url(:Resources/MainWindow/aio_toobar_tool.png); 
+   background-image: url(:/Resources/MainWindow/aio_toobar_tool.png); 
    background-position:center;
 }
 QPushButton#toolsetBtn:hover {
-   background-image:url(:Resources/MainWindow/aio_toobar_tool.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_tool.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_hover.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_hover.gft.png);
    border-width:2px;
 }
 QPushButton#toolsetBtn:pressed {
-   background-image:url(:Resources/MainWindow/aio_toobar_tool.png);
+   background-image:url(:/Resources/MainWindow/aio_toobar_tool.png);
    background-position:center;
-   border-image:url(:Resources/MainWindow/2014_btn_down.gft.png);
+   border-image:url(:/Resources/MainWindow/2014_btn_down.gft.png);
    border-width:2px;
 }
 
@@ -270,15 +270,15 @@ QListView::item:hover {
 }
 
 QPushButton#tclosebtn {
-   border-image: url(:Resources/MainWindow/close.png); 
+   border-image: url(:/Resources/MainWindow/close.png); 
    border-width:0px;
 }
 QPushButton#tclosebtn:hover {
-   border-image: url(:Resources/MainWindow/close-hover.png); 
+   border-image: url(:/Resources/MainWindow/close-hover.png); 
    border-width:0px;
 }
 QPushButton#tclosebtn:pressed {
-   border-image: url(:Resources/MainWindow/close-hover.png); 
+   border-image: url(:/Resources/MainWindow/close-hover.png); 
    border-width:0px;
 }
 
@@ -288,7 +288,7 @@ QLabel#msgLabel{
 }
 
 QMenu#senMenu {
-	border-image:url(:Resources/MainWindow/menu_bkg.gft.png);
+	border-image:url(:/Resources/MainWindow/menu_bkg.gft.png);
 	border-width: 2px;
 }
 
@@ -312,11 +312,11 @@ QMenu#senMenu::icon{
 }
 
 QMenu#senMenu::indicator:exclusive:checked {
-    image:url(:Resources/MainWindow/menu_check.png);
+    image:url(:/Resources/MainWindow/menu_check.png);
 }
 
 QMenu#senMenu::indicator:exclusive:checked:selected {
-    image:url(:Resources/MainWindow/menu_check.png);
+    image:url(:/Resources/MainWindow/menu_check.png);
 }
 
 QMenu#senMenu::separator {
@@ -352,7 +352,7 @@ QComboBox::drop-down {
 }
 
 QComboBox::down-arrow {
-    image: url(:Resources/MainWindow/list_down.png);
+    image: url(:/Resources/MainWindow/list_down.png);
 }
 
 

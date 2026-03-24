@@ -17,6 +17,8 @@ private slots:
 
 private:
 	void initControl();		//初始化控件
+	bool connectMySql();	//连接MySQL数据库，验证用户输入的账号和密码是否正确，例如可以使用Qt提供的QSqlDatabase类来连接MySQL数据库，并执行相应的SQL查询来验证用户输入的账号和密码是否正确，如果连接成功并且查询结果正确则返回true，否则返回false
+	bool veryfyAccountCode();	//验证账号和密码的正确性，例如可以通过连接数据库来验证用户输入的账号和密码是否正确，如果验证成功则返回true，否则返回false
 
 private:
 	Ui::UserLogin ui;
