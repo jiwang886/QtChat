@@ -12,6 +12,9 @@
 #include "WindowManager.h"
 #include "TalkWindowShell.h"
 #include <QApplication>
+#include <QSqlQuery>
+
+extern QString gLoginEmployeeID;		//全局变量，保存登录员工的ID，例如在登录成功后将员工ID保存到这个变量中，以便在后续的操作中使用，例如在获取员工信息时可以通过这个变量来查询数据库等
 
 class CoustomProxyStyle :public QProxyStyle		//自定义样式类，继承自QProxyStyle，可以重写其中的绘制方法来实现自定义的界面风格
 {
@@ -31,13 +34,15 @@ public:
 	}
 };
 
-CCMainWindow::CCMainWindow(QWidget *parent)
-    : BasicWindow(parent)
+CCMainWindow::CCMainWindow(QString account, bool isAccountLOgin, QWidget *parent)
+	: BasicWindow(parent), m_account(account), m_isAccountLogin(isAccountLOgin)
 {
     ui.setupUi(this);
 	setWindowFlags(windowFlags() | Qt::Tool);		//设置窗口为工具窗口，工具窗口通常具有较小的标题栏和边框，并且在任务栏中不显示
 	loadStyleSheet("CCMainWindow");					//加载样式表，设置窗口的外观和风格
     initTitleBar(MIN_BUTTON); // 只显示最小化+关闭
+	setHeadPixmap(getHeadPicturePath());
+	
     initControl();
 	initTimer();
 }
@@ -51,7 +56,7 @@ void CCMainWindow::initControl()		//初始化控件
     ui.treeWidget->setStyle(new CoustomProxyStyle);
     //setLevelPixmap(0);
 
-	setHeadPixmap(QPixmap(":/Resources/MainWindow/girl.png"));
+	//setHeadPixmap(QPixmap(":/Resources/MainWindow/girl.png"));
 	setStatusMenuIcon(":/Resources/MainWindow/StatusSucceeded.png");
 
 	QHBoxLayout* appupLayout = new QHBoxLayout;			//创建一个水平布局，用于放置应用部件
@@ -89,6 +94,32 @@ void CCMainWindow::initControl()		//初始化控件
 
 	SysTray* sysTray = new SysTray(this);		//创建一个系统托盘对象，作为主窗口的子对象
 
+}
+
+QString CCMainWindow::getHeadPicturePath()
+{
+	QString strPicturePath;
+	if (!m_isAccountLogin)	//qq
+	{
+		QSqlQuery queryPicture(QString("SELECT picture FROM tab_employees WHERE employeeID = %1").arg(m_account));
+		queryPicture.exec();
+		queryPicture.next();
+		strPicturePath = queryPicture.value(0).toString();		//从数据库中查询员工的头像路径，并将其保存到strPicturePath变量中
+	}
+	else	//账号
+	{
+		QSqlQuery queryEmployeeID(QString("SELECT employeeID FROM tab_accounts WHERE account = '%1'").arg(m_account));
+		queryEmployeeID.exec();
+		queryEmployeeID.next();
+		int employeeID = queryEmployeeID.value(0).toInt();		//从数据库中查询员工的头像路径，并将其保存到strPicturePath变量中
+
+		QSqlQuery queryPicture(QString("SELECT picture FROM tab_employees WHERE employeeID = %1").arg(employeeID));
+		queryPicture.exec();
+		queryPicture.next();
+		strPicturePath = queryPicture.value(0).toString();		//从数据库中查询员工的头像路径，并将其保存到strPicturePath变量中
+	}
+
+	return strPicturePath;
 }
 
 void CCMainWindow::setUserName(const QString& name)
@@ -181,7 +212,27 @@ QWidget* CCMainWindow::addOtherAppExtension(const QString& appPath, const QStrin
 
 void CCMainWindow::resizeEvent(QResizeEvent* event)
 {
-	setUserName("极望-绿毛虫会超进化成裂空座");		//设置用户名
+	QString UserName;
+	if (!m_isAccountLogin)	//qq
+	{
+		QSqlQuery queryName(QString("SELECT employee_name FROM tab_employees WHERE employeeID = %1").arg(m_account));
+		queryName.exec();
+		queryName.next();
+		UserName = queryName.value(0).toString();		
+	}
+	else	//账号
+	{
+		QSqlQuery queryEmployeeID(QString("SELECT employeeID FROM tab_accounts WHERE account = '%1'").arg(m_account));
+		queryEmployeeID.exec();
+		queryEmployeeID.next();
+		int employeeID = queryEmployeeID.value(0).toInt();		//从数据库中查询员工的头像路径，并将其保存到strPicturePath变量中
+
+		QSqlQuery queryName(QString("SELECT employee_name FROM tab_employees WHERE employeeID = %1").arg(employeeID));
+		queryName.exec();
+		queryName.next();
+		UserName = queryName.value(0).toString();		//从数据库中查询员工的头像路径，并将其保存到strPicturePath变量中
+	}
+	setUserName(UserName);		//设置用户名
 	BasicWindow::resizeEvent(event);		//调用父类的resizeEvent函数，进行默认的窗口大小调整操作
 }
 
@@ -249,6 +300,22 @@ void CCMainWindow::initContactTree()
 
 	RootContactItem* pItemName = new RootContactItem(true,ui.treeWidget);
 
+	//获取部门ID
+	QSqlQuery queryComDepID(QString("SELECT departmentID FROM tab_department WHERE department_name = '%1'").arg("公司群"));		//执行SQL查询，获取部门ID
+	queryComDepID.exec();
+	queryComDepID.first();
+	int ComDepID = queryComDepID.value(0).toInt();		//将查询结果的第一行第一列的值转换为整数，作为部门ID
+
+	//登录者所在部门的ID(部门群号)
+	QSqlQuery querySelfDepID(QString("SELECT departmentID FROM tab_employees WHERE employeeID = %1").arg(gLoginEmployeeID));		//执行SQL查询，获取部门ID
+	querySelfDepID.exec();
+	querySelfDepID.first();		//第一行
+	int SelfDepID = querySelfDepID.value(0).toInt();		//将查询结果的第一行的第一列的值转换为整数，作为部门ID
+
+
+	addCompanyDeps(pRootGroupItem, ComDepID);
+	addCompanyDeps(pRootGroupItem, SelfDepID);
+
 	QString strGroupName = "神人科技";		//设置联系人分组的名称
 	pItemName->setText(strGroupName);		//设置联系人分组节点的文本
 	
@@ -257,16 +324,16 @@ void CCMainWindow::initContactTree()
 	ui.treeWidget->setItemWidget(pRootGroupItem, 0, pItemName);		
 	//将联系人分组节点的文本设置为pItemName，将其显示在树形控件中
 
-	QStringList sCompDeps;	
-	sCompDeps << "公司" << "人事" << "研发" << "市场";
-	for (int i = 0; i < sCompDeps.size(); i++)
-	{
-		addCompanyDeps(pRootGroupItem,sCompDeps.at(i));
-	}
+	//QStringList sCompDeps;	
+	//sCompDeps << "公司" << "人事" << "研发" << "市场";
+	//for (int i = 0; i < sCompDeps.size(); i++)
+	//{
+	//	addCompanyDeps(pRootGroupItem,sCompDeps.at(i));
+	//}
 
 	
 }
-void CCMainWindow::addCompanyDeps(QTreeWidgetItem* pRootGroupItem, const QString& sDeps)
+void CCMainWindow::addCompanyDeps(QTreeWidgetItem* pRootGroupItem, int DepID)
 {
 	QTreeWidgetItem* pChild = new QTreeWidgetItem;
 	
@@ -275,16 +342,29 @@ void CCMainWindow::addCompanyDeps(QTreeWidgetItem* pRootGroupItem, const QString
 	pix.load(":/Resources/MainWindow/head_mask.png");
 
 	pChild->setData(0, Qt::UserRole, 1);	//设置子节点的数据，使用Qt::UserRole作为数据的角色，值为1，表示部门节点的类���或标识
-	pChild->setData(0, Qt::UserRole + 1, QString::number((int)pChild));//设置子节点的额外数据，使用Qt::UserRole + 1作为数据的角色，值为部门节点的唯一标识，这里使用部门节点的内存地址转换为字符串来表示
+	pChild->setData(0, Qt::UserRole + 1, DepID);//设置子节点的额外数据，使用Qt::UserRole + 1作为数据的角色，值为部门节点的唯一标识，这里使用部门节点的内存地址转换为字符串来表示
+
+	//获取部门头像
+	QPixmap groupPix;
+	QSqlQuery queryPicture(QString("SELECT picture FROM tab_department WHERE departmentID = %1").arg(DepID));		//执行SQL查询，获取部门头像路径
+	queryPicture.exec();
+	queryPicture.first();
+	groupPix.load(queryPicture.value(0).toString());		//加载部门头像图像
+	//获取部门名称
+	QString strDepName;
+	QSqlQuery queryDepName(QString("SELECT department_name FROM tab_department WHERE departmentID = %1").arg(DepID));
+	queryDepName.exec();
+	queryDepName.first();
+	strDepName = queryDepName.value(0).toString();		//将查询结果的第一行第一列的值转换为字符串，作为部门名称
 
 	ContactItem* pContactItem = new ContactItem(ui.treeWidget);
-	pContactItem->setHeadPixmap(getRoundImage(QPixmap(":/Resources/MainWindow/girl.png"),pix,pContactItem->getHeadLabelSize()));
-	pContactItem->setUserName(sDeps);		//设置部门节点的文本为部门名称
+	pContactItem->setHeadPixmap(getRoundImage(groupPix,pix,pContactItem->getHeadLabelSize()));
+	pContactItem->setUserName(strDepName);		//设置部门节点的文本为部门名称
 
 	pRootGroupItem->addChild(pChild);		//将部门节点添加到根节点的子节点列表中
 	ui.treeWidget->setItemWidget(pChild, 0, pContactItem);		//将部门节点的文本设置为pContactItem，将其显示在树形控件中
 
-	m_groupMap.insert(pChild, sDeps);		//将部门节点和部门名称的映射关系插入到m_groupMap中，方便后续通过部门节点来获取部门名称
+	//m_groupMap.insert(pChild, strDepName);		//将部门节点和部门名称的映射关系插入到m_groupMap中，方便后续通过部门节点来获取部门名称
 }
 
 void CCMainWindow::onItemClicked(QTreeWidgetItem* item, int column)
@@ -326,24 +406,27 @@ void CCMainWindow::onItemDoubleClicked(QTreeWidgetItem* item, int column)
 	bool bIsChild = item->data(0, Qt::UserRole).toBool();		//判断被双击的项目是否是子节点，即部门节点，通过检查项目的数据来确定
 	if (bIsChild)
 	{
-		QString strGroup = m_groupMap.value(item);		//获取被双击的项目的父节点的数据，即部门节点的数据，作为分组ID
-		if (strGroup == "公司")
-		{
-			WindowManager::getInstance()->addNewTalkWindow(item->data(0,Qt::UserRole+1).toString(),COMPANY);
-			//调用WindowManager的getInstance函数获取WindowManager的单例对象，并调用函数来显示聊天窗口，参数为分组ID，即部门名称
-		}
-		else if (strGroup == "人事")
-		{
-			WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), PERSONELGROUP);
-		}
-		else if (strGroup == "研发")
-		{
-			WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), DEVELOPMENTGROUP);
-		}
-		else if (strGroup == "市场")
-		{
-			WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), MARKETGROUP);
-		}
+		WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString());
+
+		//QString strGroup = m_groupMap.value(item);		//获取被双击的项目的父节点的数据，即部门节点的数据，作为分组ID
+		//if (strGroup == "公司")
+		//{
+		//	WindowManager::getInstance()->addNewTalkWindow(item->data(0,Qt::UserRole+1).toString(),COMPANY);
+		//	//调用WindowManager的getInstance函数获取WindowManager的单例对象，并调用函数来显示聊天窗口，参数为分组ID，即部门名称
+		//}
+		//else if (strGroup == "人事")
+		//{
+		//	WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), PERSONELGROUP);
+		//}
+		//else if (strGroup == "研发")
+		//{
+		//	WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), DEVELOPMENTGROUP);
+		//}
+		//else if (strGroup == "市场")
+		//{
+		//	WindowManager::getInstance()->addNewTalkWindow(item->data(0, Qt::UserRole + 1).toString(), MARKETGROUP);
+		//}
+
 	}
 }
 

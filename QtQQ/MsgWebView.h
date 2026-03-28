@@ -52,12 +52,15 @@ public:
 	MsgWebView(QWidget *parent);
 	~MsgWebView();
 
-	void appendMsg(const QString& html);	//在消息显示区域追加消息内容，例如当收到一条新消息时，可以调用这个方法来将消息内容追加到聊天窗口的消息显示区域
+	void appendMsg(const QString& html,QString strObj = "0");	//在消息显示区域追加消息内容，例如当收到一条新消息时，可以调用这个方法来将消息内容追加到聊天窗口的消息显示区域
 
 private:
 	QList<QStringList>parseHtml(const QString& html);	//解析HTML内容，提取出消息中的文本、表情图片等信息
 	//Qt中所有DOM节点都可以通过QDomNode类来表示
 	QList<QStringList>parseDocNode(const QDomNode& node);	//解析HTML节点
+
+signals:
+	void signalSendMsg(QString& strData, int& msgType, QString sFile);
 
 private:
 	MsgHtmlObj* m_msgHtmlObj;	//消息HTML对象，使用一个MsgHtmlObj对象来存储消息的HTML内容

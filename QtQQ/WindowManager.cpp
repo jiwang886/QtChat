@@ -1,6 +1,7 @@
 ﻿#include "WindowManager.h"
 #include "TalkWindow.h"
 #include "TalkWindowItem.h"
+#include <QSqlQueryModel>
 
 Q_GLOBAL_STATIC(WindowManager,theInstance)		//定义一个全局静态变量，用于存储WindowManager的单例实例，确保在整个程序中只有一个WindowManager对象存在
 
@@ -38,7 +39,7 @@ void WindowManager::addWindowName(const QString& qsWindowName, QWidget* qWidget)
 	}
 }
 
-void WindowManager::addNewTalkWindow(const QString& uid, GroupType groupType, const QString& strPeople)
+void WindowManager::addNewTalkWindow(const QString& uid/*, GroupType groupType, const QString& strPeople*/)
 {
 	if (m_talkWindowShell == nullptr)
 	{
@@ -48,43 +49,66 @@ void WindowManager::addNewTalkWindow(const QString& uid, GroupType groupType, co
 	QWidget* widget = findWindowName(uid);		//通过窗口名称获取对应的窗口对象
 	if (!widget)
 	{
-		TalkWindow* talkwindow = new TalkWindow(m_talkWindowShell,uid,groupType);		//如果窗口对象不存在，创建一个新的TalkWindow对象，并传入相关参数，例如用户ID、群组类型、人员信息等
+		TalkWindow* talkwindow = new TalkWindow(m_talkWindowShell,uid/*,groupType*/);		//如果窗口对象不存在，创建一个新的TalkWindow对象，并传入相关参数，例如用户ID、群组类型、人员信息等
 		TalkWindowItem* talkwindowItem = new TalkWindowItem(talkwindow);		//创建一个新的TalkWindowItem对象
-		switch (groupType) {
-		case COMPANY:
+	
+		//判断是群聊还是私聊
+		QSqlQueryModel sqlDepMpodel;
+		QString strSql = QString("SELECT department_name,sign FROM tab_department WHERE departmentID = %1").arg(uid);
+		sqlDepMpodel.setQuery(strSql);
+		int rows = sqlDepMpodel.rowCount();
+		QString strWindowName, strMsgLabel;
+		if (rows == 0)//如果查询结果为空，说明是私聊
 		{
-			talkwindow->setWindowName("神人科技--创建神奇内容");
-			talkwindowItem->setMsgLabelContent("公司群");
-			break;
+			QString sql = QString("SELECT employee_name,employee_sign FROM tab_employees WHERE employeeID = %1").arg(uid);
+			sqlDepMpodel.setQuery(sql);	//查询员工表，获取员工姓名和签名
 		}
-		case PERSONELGROUP:
-		{
-			talkwindow->setWindowName("用最低的待遇找人才");
-			talkwindowItem->setMsgLabelContent("人事");
-			break;
-		}
-		case DEVELOPMENTGROUP:
-		{
-			talkwindow->setWindowName("研发神奇内容");
-			talkwindowItem->setMsgLabelContent("研发");
-			break;
-		}
-		case MARKETGROUP:
-		{
-			talkwindow->setWindowName("寻找神奇内容");
-			talkwindowItem->setMsgLabelContent("市场");
-			break;
-		}
-		case PTOP:
-		{
-			talkwindow->setWindowName("天天骂老板");
-			talkwindowItem->setMsgLabelContent(strPeople);
-			break;
-		}
-		default:
-			break;
-		}
-		m_talkWindowShell->addTalkWindow(talkwindow, talkwindowItem, groupType);
+		QModelIndex indexDepIndex, signIndex;
+		indexDepIndex = sqlDepMpodel.index(0, 1);		//获取查询结果的第一行第一列的索引，即部门名称或员工姓名
+		signIndex = sqlDepMpodel.index(0, 0);		//获取查询结果的第一行第二列的索引，即部门签名或员工签名
+		strWindowName = sqlDepMpodel.data(indexDepIndex).toString();		//获取部门名称或员工姓名
+		strMsgLabel = sqlDepMpodel.data(signIndex).toString();		//获取部门签名或员工签名
+		
+		talkwindow->setWindowName(strWindowName);		//设置聊天窗口的标题为部门名称或员工姓名
+		talkwindowItem->setMsgLabelContent(strMsgLabel);		//设置聊天窗口列表项的内容为部门签名或员工签名
+
+		m_talkWindowShell->addTalkWindow(talkwindow, talkwindowItem,uid);
+
+	//	switch (groupType) {
+	//	case COMPANY:
+	//	{
+	//		talkwindow->setWindowName("神人科技--创建神奇内容");
+	//		talkwindowItem->setMsgLabelContent("公司群");
+	//		break;
+	//	}
+	//	case PERSONELGROUP:
+	//	{
+	//		talkwindow->setWindowName("用最低的待遇找人才");
+	//		talkwindowItem->setMsgLabelContent("人事");
+	//		break;
+	//	}
+	//	case DEVELOPMENTGROUP:
+	//	{
+	//		talkwindow->setWindowName("研发神奇内容");
+	//		talkwindowItem->setMsgLabelContent("研发");
+	//		break;
+	//	}
+	//	case MARKETGROUP:
+	//	{
+	//		talkwindow->setWindowName("寻找神奇内容");
+	//		talkwindowItem->setMsgLabelContent("市场");
+	//		break;
+	//	}
+	//	case PTOP:
+	//	{
+	//		talkwindow->setWindowName("天天骂老板");
+	//		talkwindowItem->setMsgLabelContent(strPeople);
+	//		break;
+	//	}
+	//	default:
+	//		break;
+	//	}
+	//	m_talkWindowShell->addTalkWindow(talkwindow, talkwindowItem, groupType);
 	}
 	else
 	{	//左侧聊天窗口列表项被点击时，获取对应的聊天窗口对象，并将其设置为当前显示的聊天窗口

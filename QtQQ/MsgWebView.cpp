@@ -4,6 +4,9 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <qwebchannel.h>
+#include "TalkWindowShell.h"
+#include "WindowManager.h"
+
 
 MsgHtmlObj::MsgHtmlObj(QObject* parent)
 	: QObject(parent)
@@ -64,6 +67,10 @@ MsgWebView::MsgWebView(QWidget *parent)
 	channel->registerObject("external", m_msgHtmlObj);
 	this->page()->setWebChannel(channel);		//将QWebChannel对象设置为MsgWebView页面的WebChannel，确保在聊天窗口中能够正确地处理消息内容的显示和交互
 	
+	TalkWindowShell* talkWindowShell = WindowManager::getInstance()->getTalkWindowShell();		//获取聊天窗口的Shell对象，使用WindowManager类来管理聊天窗口的创建和销毁等操作，确保在聊天窗口中能够正确地处理消息内容的显示和交互
+	connect(this, &MsgWebView::signalSendMsg, talkWindowShell, &TalkWindowShell::updateSendTcpMsg);
+
+
 	//初始化收信息页面
 	this->load(QUrl("qrc:/Resources/MainWindow/MsgHtml/msgTmpl.html"));		//加载消息HTML模板
 
@@ -72,17 +79,53 @@ MsgWebView::MsgWebView(QWidget *parent)
 MsgWebView::~MsgWebView()
 {}
 
-void MsgWebView::appendMsg(const QString & html)	//在消息显示区域追加消息内容
+void MsgWebView::appendMsg(const QString & html,QString strObj)	//在消息显示区域追加消息内容
 {
+
+
 	QJsonObject msgObj;
 	QString qsMsg;
 	const QList<QStringList>& msgLst = parseHtml(html);		//解析HTML内容，提取出消息中的文本、表情图片等信息，使用parseHtml函数来解析HTML内容，并将解析结果存储在一个QList<QStringList>对象中
+	
+	int imageNum = 0;		//表情数量
+	int msgType = 1;		//消息类型:0表情，1文本，2文件等
+	bool isImageMsg = false;		//是否是表情消息，使用一个布尔变量来标识消息内容是否包含表情图片等信息，确保在处理消息内容时能够正确地判断消息类型和内容
+	QString strData;		//消息内容: 表情都给三位比如：055 008 123，文本直接给文本内容，文件给文件路径
+
+	
 	for (int i=0; i < msgLst.size(); i++)
 	{
 		if (msgLst.at(i).at(0) == "img")
 		{
 			QString imagePath = msgLst.at(i).at(1);		
-			QPixmap pixmap(imagePath);		
+			QPixmap pixmap;		
+
+			//获取表情名称的位置
+			QString strEmotionPath = "qrc:/Resources/MainWindow/emotion/";		//表情图片的路径前缀，使用一个QString变量来存储表情图片的路径前缀，确保在加载表情图片时能够正确地找到图片文件
+			int pos = strEmotionPath.length();		//表情图片的路径前缀长度，使用一个整数变量来存储表情图片的路径前缀长度，确保在获取表情名称时能够正确地截取表情图片的文件名
+			isImageMsg = true;		//如果消息内容包含表情图片等信息，则将isImageMsg变量设置为true，表示消息内容是表情消息，确保在处理消息内容时能够正确地判断消息类型和内容
+
+			//获取表情名称
+			QString strEmotionName = imagePath.mid(pos);		//表情名称，使用QString类的mid函数来获取表情图片的文件名，确保在获取表情名称时能够正确地截取表情图片的文件名
+			strEmotionName.replace(".png", "");		//去掉表情图片的扩展名，使用QString类的replace函数来去掉表情图片的扩展名，确保在获取表情名称时能够正确地获取表情名称
+			int emotionNameL = strEmotionName.length();		//表情名称的长度，使用一个整数变量来存储表情名称的长度，确保在获取表情编号时能够正确地截取表情名称的最后三位数字
+			if (emotionNameL == 1)	//补足三位
+			{
+				strData = strData + "00" + strEmotionName;		//如果表情名称的长度为1，则在表情名称前面补足两个0，确保表情编号的格式为三位数字
+			}
+			else if(emotionNameL == 2)
+			{
+				strData = strData + "0" + strEmotionName;
+			}
+			else if (emotionNameL == 3)
+			{
+				strData = strData + strEmotionName;
+			}
+			msgType = 0;		//消息类型为表情，设置消息类型为0，表示消息内容是表情图片等信息
+			imageNum++;		//表情数量加1，使用一个整数变量来统计消息内容中的表情图片数量，确保在处理消息内容时能够正确地统计表情图片的数量
+
+
+
 			if (imagePath.left(3) == "qrc")
 			{
 				pixmap.load(imagePath.mid(3));		//去掉qrc前缀，使用QPixmap类的load函数来加载图片，确保图片被正确地加载和显示
@@ -99,14 +142,26 @@ void MsgWebView::appendMsg(const QString & html)	//在消息显示区域追加消息内容
 		else if(msgLst.at(i).at(0) == "text")
 		{
 			qsMsg += msgLst.at(i).at(1);		//如果消息内容是文本信息，则直接将文本内容追加到qsMsg变量中，表示消息内容中的文本信息
+			strData = qsMsg;		//将文本内容赋值给strData变量，表示消息内容中的文本信息，确保在处理消息内容时能够正确地获取文本信息
 		}
 	}
 	msgObj.insert("MSG", qsMsg);	//qsMsg替换MSG
 	const QString& Msg = QJsonDocument(msgObj).toJson(QJsonDocument::Compact);		//紧凑
-	this->page()->runJavaScript(QString("appendHtml(%1)").arg(Msg));		//调用JavaScript函数来将消息内容追加到聊天窗口的消息显示区域，使用QWebEngineView类的page函数来获取当前页面，并使用runJavaScript函数来执行JavaScript代码，将消息内容传递给JavaScript函数进行处理和显示
-	
+	if (strObj == "0")	//发信息
+	{
+		this->page()->runJavaScript(QString("appendHtml0(%1)").arg(Msg));//调用JavaScript函数来将消息内容追加到聊天窗口的消息显示区域，使用QWebEngineView类的page函数来获取当前页面，并使用runJavaScript函数来执行JavaScript代码，将消息内容传递给JavaScript函数进行处理和显示
+		
+		if (isImageMsg)
+		{
+			strData = QString::number(imageNum) + "images" + strData;		//如果消息内容包含表情图片等信息，则在消息内容前面添加表情数量，确保在处理消息内容时能够正确地统计表情图片的数量和类型
+		}
 
-
+		emit signalSendMsg(strData, msgType, "");//发送消息内容，使用Qt的信号和槽机制来发送消息内容，确保在聊天窗口中能够正确地处理消息内容的显示和交互
+	}
+	else	//收信息
+	{
+		this->page()->runJavaScript(QString("recvHtml_%1(%2)").arg(strObj).arg(Msg));
+	}
 }
 
 

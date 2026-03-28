@@ -4,6 +4,9 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 
+QString gLoginEmployeeID;		//全局变量，保存当前登录用户的ID，例如可以在用户登录成功后将用户的ID保存到这个变量中，以便在后续的操作中使用，例如在聊天窗口中显示当前用户的昵称、头像等信息等
+
+
 UserLogin::UserLogin(QWidget *parent)
 	: BasicWindow(parent)
 {
@@ -27,7 +30,7 @@ void UserLogin::initControl()
 	headLabel->setFixedSize(68, 68);	//设置头像标签的大小
 	QPixmap pixmap(":/Resources/MainWindow/head_mask.png");		//空的圆形头像图片
 	//调用getRoundImage函数，获取圆形头像图片，并设置到头像标签上
-	headLabel->setPixmap(getRoundImage(QPixmap(":/Resources/MainWindow/girl.png"), pixmap, headLabel->size()));
+	headLabel->setPixmap(getRoundImage(QPixmap(":/Resources/MainWindow/app/logo.ico"), pixmap, headLabel->size()));
 	//将头像标签移动到标题栏的中心位置，距离标题栏底部34像素，计算结果为正中间
 	headLabel->move(width() / 2 - 34, ui.titleWidget->height() - 34);
 	connect(ui.loginBtn, &QPushButton::clicked, this, &UserLogin::onLoginBtnClicked);		//连接登录按钮的点击信号到槽函数
@@ -57,7 +60,7 @@ bool UserLogin::connectMySql()
 		return false;		//如果连接数据库失败，返回false
 }
 
-bool UserLogin::veryfyAccountCode()
+bool UserLogin::veryfyAccountCode(bool& isAccountLogin, QString& strAccount)
 {
 	QString strAccountInput = ui.editUserAccount->text();		//获取用户输入的账号
 	QString strCodeInput = ui.editPassword->text();		//获取用户输入的密码
@@ -73,6 +76,9 @@ bool UserLogin::veryfyAccountCode()
 		QString strCode = queryEmployeeID.value(0).toString();		//获取查询结果中的code字段值，即数据库中存储的密码
 		if (strCode == strCodeInput)
 		{
+			gLoginEmployeeID = strAccountInput;		//将当前登录用户的ID保存到全局变量中，以便在后续的操作中使用，例如在聊天窗口中显示当前用户的昵称、头像等信息等
+			isAccountLogin = false;		//设置登录方式为QQ号登录
+			strAccount = strAccountInput;		//将用户输入的账号保存到输出参数中，以便在后续的操作中使用，例如在聊天窗口中显示当前用户的昵称、头像等信息等
 			return true;		//如果用户输入的密码与数据库中存储的密码相同，返回true
 		}
 		else
@@ -90,6 +96,9 @@ bool UserLogin::veryfyAccountCode()
 		QString strCode = queryAccount.value(0).toString();		//获取查询结果中的code字段值，即数据库中存储的密码
 		if (strCode == strCodeInput)
 		{
+			gLoginEmployeeID = queryAccount.value(1).toString();		//将当前登录用户的ID保存到全局变量中，以便在后续的操作中使用，例如在聊天窗口中显示当前用户的昵称、头像等信息等
+			isAccountLogin = true;		//设置登录方式为账号登录
+			strAccount = strAccountInput;		//将用户输入的账号保存到输出参数中，以便在后续的操作中使用，例如在聊天窗口中显示当前用户的昵称、头像等信息等
 			return true;		//如果用户输入的密码与数据库中存储的密码相同，返回true
 		}
 		else
@@ -105,16 +114,18 @@ bool UserLogin::veryfyAccountCode()
 
 void UserLogin::onLoginBtnClicked()		//登录按钮被点击的槽函数
 {
-	if(veryfyAccountCode())
+	bool isAccountLogin;		//定义一个布尔变量，表示登录方式，默认为false，即QQ号登录
+	QString strAccount;		//定义一个字符串变量，保存用户输入的账号，例如可以在验证账号和密码的函数中将用户输入的账号保存到这个变量中，以便在后续的操作中使用，例如在聊天窗口中显示当前用户的昵称、头像等信息等
+	if(veryfyAccountCode(isAccountLogin,strAccount))
 	{
 	//这里可以添加登录逻辑，例如验证用户名和密码，显示登录结果等
 	//暂时只是关闭登录窗口
 	close();
-	CCMainWindow* mainWindow = new CCMainWindow();		//创建主窗口对象
+	CCMainWindow* mainWindow = new CCMainWindow(strAccount,isAccountLogin);		//创建主窗口对象
 	mainWindow->show();			//显示主窗口
 	}
 	else
 		QMessageBox::information(this, "提示", "账号或密码错误，请重新输入！");		//如果验证失败，弹出一个消息框提示用户账号或密码错误
-	ui.editUserAccount->clear();		//清空账号输入框
-	ui.editPassword->clear();		//清空密码输入框
+	//ui.editUserAccount->clear();		//清空账号输入框
+	//ui.editPassword->clear();		//清空密码输入框
 }

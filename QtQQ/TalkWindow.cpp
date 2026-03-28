@@ -6,13 +6,17 @@
 #include <QToolTip>
 #include <QFile>
 #include <QMessageBox>
-TalkWindow::TalkWindow(QWidget *parent, const QString& uid, GroupType groupType)
-	: QWidget(parent), m_talkId(uid), m_groupType(groupType)	
+#include <QSqlQueryModel>
+#include <QSqlQuery>
+
+TalkWindow::TalkWindow(QWidget *parent, const QString& uid/*, GroupType groupType*/)
+	: QWidget(parent), m_talkId(uid)//, m_groupType(groupType)	
 	//初始化成员变量，例如将用户ID和群组类型保存到成员变量中，以便在后续的操作中使用，例如在设置聊天窗口标题时可以根据群组类型来设置不同的标题等
 {
 	ui.setupUi(this);
 	WindowManager::getInstance()->addWindowName(m_talkId, this);	//将当前聊天窗口的用户ID和窗口对象添加到窗口管理器中，以便在需要获取聊天窗口对象时可以通过用户ID来查找对应的窗口对象，并进行相应的操作，例如显示聊天窗口、关闭聊天窗口等
 	setAttribute(Qt::WA_DeleteOnClose);	//设置窗口关闭时自动删除对象，避免内存泄漏
+	initGroupTalkStatus();
 	initControl();	//初始化控件，设置聊天窗口的控件属性和布局，例如设置消息输入框的占位文本、设置发送按钮的图标等
 	
 }
@@ -39,9 +43,9 @@ void TalkWindow::onItemDoubleClicked(QTreeWidgetItem* item, int column)
 	bool bIsChild = item->data(0, Qt::UserRole).toBool();	//获取被双击的树形控件项的数据，判断该项是根项还是子项，例如可以通过设置不同的用户角色数据来区分根项和子项等
 	if (bIsChild)
 	{
-		m_groupType = PTOP;	//如果被双击的树形控件项是子项，即成员项，则将群组类型设置为私聊，以便在打开聊天窗口时能够正确地设置聊天窗口的标题和聊天窗口列表项的内容等
+		//m_groupType = PTOP;	//如果被双击的树形控件项是子项，即成员项，则将群组类型设置为私聊，以便在打开聊天窗口时能够正确地设置聊天窗口的标题和聊天窗口列表项的内容等
 		QString strPeopleName = m_groupPeopleMap.value(item);	//根据被双击的树形控件项来获取对应的成员信息，例如可以通过树形控件项的数据来查找对应的成员信息，并进行相应的操作，例如显示成员的头像、昵称等
-		WindowManager::getInstance()->addNewTalkWindow(item->data(0,Qt::UserRole+1).toString(), m_groupType, strPeopleName);
+		WindowManager::getInstance()->addNewTalkWindow(item->data(0,Qt::UserRole+1).toString() /*，m_groupType, strPeopleName*/);
 	}
 }
 
@@ -64,76 +68,131 @@ void TalkWindow::initControl()
 
 	connect(ui.treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(onItemDoubleClicked(QTreeWidgetItem*, int)));
 
-	switch (m_groupType)
+	if (m_isGroupChat)
 	{
-	case COMPANY: {
-		initCompanyTalk();
-		break;
-		}
-	case PERSONELGROUP: {
-		initPersonelTalk();
-		break;
+		initTalkWindow();
 	}
-	case DEVELOPMENTGROUP: {
-		initDevelopTalk();
-		break;
-	}
-	case MARKETGROUP: {
-		iniMarketTalk();
-		break;
-	}
-	default: {
-		
+	else
+	{
 		initPtoPTalk();
-		break;
-	}	
 	}
+
+
+	//switch (m_groupType)
+	//{
+	//case COMPANY: {
+	//	initCompanyTalk();
+	//	break;
+	//	}
+	//case PERSONELGROUP: {
+	//	initPersonelTalk();
+	//	break;
+	//}
+	//case DEVELOPMENTGROUP: {
+	//	initDevelopTalk();
+	//	break;
+	//}
+	//case MARKETGROUP: {
+	//	iniMarketTalk();
+	//	break;
+	//}
+	//default: {
+	//	
+	//	initPtoPTalk();
+	//	break;
+	//}	
+	//}
 }
 
-void TalkWindow::initCompanyTalk()
+void TalkWindow::initGroupTalkStatus()
 {
-	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
-	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
-	//设置data区分根项子项
-	pRootItem->setData(0, Qt::UserRole, 0);
-	RootContactItem* pItemName = new RootContactItem(false,ui.treeWidget);
+	QSqlQueryModel sqlDepModel;
+	QString strSql = QString("SELECT * FROM tab_department WHERE departmentID = %1").arg(m_talkId);
+	sqlDepModel.setQuery(strSql);
 
-	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
-
-	int nEmployeeNum = 50;		//假设公司有50个员工
-	QString qsGroupName = QString("公司群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
-	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
-
-	//插入分组节点
-	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
-	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
-
-	//展开
-	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
-	for (int i = 0; i < nEmployeeNum; ++i)
+	int rows = sqlDepModel.rowCount();
+	if (rows == 0)
 	{
-		addPeopleInfo(pRootItem);
+		m_isGroupChat = false;	//如果查询结果为空，即没有找到对应的部门信息，则将群聊标识设置为false，表示当前聊天窗口是一个私聊窗口等
 	}
+	else
+	{
+		m_isGroupChat = true;	//如果查询结果不为空，即找到了对应的部门信息，则将群聊标识设置为true，表示当前聊天窗口是一个群聊窗口等
+	}
+
 }
 
-void TalkWindow::addPeopleInfo(QTreeWidgetItem* pRootGroupItem)
+int TalkWindow::getComDepID()
+{
+	QSqlQuery queryDepID(QString("SELECT departmentID FROM tab_department WHERE department_name = '%1'").arg("公司群"));
+	queryDepID.exec();
+	queryDepID.next();
+	 
+	return queryDepID.value(0).toInt();	//执行查询语句，获取公司群的部门ID，并将其作为返回值返回，例如可以通过查询部门表来获取公司群的部门ID等
+}
+
+//void TalkWindow::initCompanyTalk()
+//{
+//	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
+//	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+//	//设置data区分根项子项
+//	pRootItem->setData(0, Qt::UserRole, 0);
+//	RootContactItem* pItemName = new RootContactItem(false,ui.treeWidget);
+//
+//	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
+//
+//	int nEmployeeNum = 50;		//假设公司有50个员工
+//	QString qsGroupName = QString("公司群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
+//	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
+//
+//	//插入分组节点
+//	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
+//	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
+//
+//	//展开
+//	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
+//	for (int i = 0; i < nEmployeeNum; ++i)
+//	{
+//		addPeopleInfo(pRootItem);
+//	}
+//}
+//
+void TalkWindow::addPeopleInfo(QTreeWidgetItem* pRootGroupItem,int employeeID)
 {
 	QTreeWidgetItem* pChild = new QTreeWidgetItem;
-	QPixmap pix1;
-	pix1.load(":/Resources/MainWindow/head_mask.png");	//加载员工头像图片资源，例如可以将员工头像图片保存在资源文件中，并根据员工编号来加载对应的头像图片等
-	//const QImage image(":/Resourses/MainWindow/girl.png");
-	QPixmap image;
-	image.load(":/Resources/MainWindow/girl.png");
-
+	
+	
 	pChild->setData(0, Qt::UserRole, 1);	//设置data区分根项子项
-	pChild->setData(0, Qt::UserRole + 1, QString::number((int)pChild));	//设置data区分员工编号
+	pChild->setData(0, Qt::UserRole + 1, employeeID);	//设置data区分员工编号
 
 	ContactItem* pContactItem = new ContactItem(ui.treeWidget);	//创建一个联系人项对象，表示员工信息，例如可以包含员工的头像、姓名等信息等
+	
+	QPixmap pix1;
+	pix1.load(":/Resources/MainWindow/head_mask.png");	//加载员工头像图片资源，例如可以将员工头像图片保存在资源文件中，并根据员工编号来加载对应的头像图片等
+	
 
-	static int i = 1;	//员工编号索引，假设从1开始递增
+	//获取员工信息，例如可以通过查询员工表来获取员工的头像图片、姓名等信息，并将其设置到联系人项中等
+	QString strName, strSign, strPicturePath;
+	QSqlQueryModel queryInfoModel;
+	queryInfoModel.setQuery(QString("SELECT employee_name,employee_sign,picture FROM tab_employees WHERE employeeID = %1").arg(employeeID));
+
+	QModelIndex nameIndex, signIndex, pictureIndex;
+	nameIndex = queryInfoModel.index(0, 0);
+	signIndex = queryInfoModel.index(0, 1);
+	pictureIndex = queryInfoModel.index(0, 2);
+
+	strName = queryInfoModel.data(nameIndex).toString();
+	strSign = queryInfoModel.data(signIndex).toString();
+	strPicturePath = queryInfoModel.data(pictureIndex).toString();
+
+	QPixmap image;
+	image.load(strPicturePath);
+	
+	
+	//static int i = 1;	//员工编号索引，假设从1开始递增
 	pContactItem->setHeadPixmap(CommonUtils::getRoundImage(image,pix1,pContactItem->getHeadLabelSize()));	//设置联系人项的头像图片为加载的员工头像图片
-	pContactItem->setUserName(QString("员工%1").arg(i++));	//设置联系人项的用户名为员工编号，例如可以根据员工编号来设置不同的用户名等
-	pContactItem->setSignName("");	//设置联系人项的签名为员工的个性签名，例如可以根据员工编号来设置不同的个性签名等
+	pContactItem->setUserName(strName);	//设置联系人项的用户名为员工编号，例如可以根据员工编号来设置不同的用户名等
+	pContactItem->setSignName(strSign);	//设置联系人项的签名为员工的个性签名，例如可以根据员工编号来设置不同的个性签名等
 
 
 	pRootGroupItem->addChild(pChild);	//将树控件项添加到根项的子项列表中，显示在树控件中
@@ -142,83 +201,134 @@ void TalkWindow::addPeopleInfo(QTreeWidgetItem* pRootGroupItem)
 	QString str = pContactItem->getUserName();	//获取联系人项的用户名，例如可以通过调用联系人项的getUserName()函数来获取员工的用户名等
 	m_groupPeopleMap.insert(pChild,str);	//将树控件项和员工编号的映射关系保存到群组成员信息映射表中，方便在需要获取员工信息时通过树控件项来查找对应的员工编号等
 }
+//
+//void TalkWindow::initPersonelTalk()
+//{
+//	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
+//	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+//	//设置data区分根项子项
+//	pRootItem->setData(0, Qt::UserRole, 0);
+//	RootContactItem* pItemName = new RootContactItem(false, ui.treeWidget);
+//
+//	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
+//
+//	int nEmployeeNum = 5;		//假设公司有50个员工
+//	QString qsGroupName = QString("人事群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
+//	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
+//
+//	//插入分组节点
+//	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
+//	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
+//
+//	//展开
+//	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
+//	for (int i = 0; i < nEmployeeNum; ++i)
+//	{
+//		addPeopleInfo(pRootItem);
+//	}
+//}
+//
+//void TalkWindow::initDevelopTalk()
+//{
+//	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
+//	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+//	//设置data区分根项子项
+//	pRootItem->setData(0, Qt::UserRole, 0);
+//	RootContactItem* pItemName = new RootContactItem(false, ui.treeWidget);
+//
+//	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
+//
+//	int nEmployeeNum = 32;		//假设公司有50个员工
+//	QString qsGroupName = QString("研发群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
+//	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
+//
+//	//插入分组节点
+//	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
+//	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
+//
+//	//展开
+//	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
+//	for (int i = 0; i < nEmployeeNum; ++i)
+//	{
+//		addPeopleInfo(pRootItem);
+//	}
+//}
+//
+//void TalkWindow::iniMarketTalk()
+//{
+//	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
+//	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+//	//设置data区分根项子项
+//	pRootItem->setData(0, Qt::UserRole, 0);
+//	RootContactItem* pItemName = new RootContactItem(false, ui.treeWidget);
+//
+//	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
+//
+//	int nEmployeeNum = 8;		//假设公司有50个员工
+//	QString qsGroupName = QString("市场群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
+//	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
+//
+//	//插入分组节点
+//	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
+//	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
+//
+//	//展开
+//	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
+//	for (int i = 0; i < nEmployeeNum; ++i)
+//	{
+//		addPeopleInfo(pRootItem);
+//	}
+//}
 
-void TalkWindow::initPersonelTalk()
+void TalkWindow::initTalkWindow()
 {
 	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
-	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
-	//设置data区分根项子项
-	pRootItem->setData(0, Qt::UserRole, 0);
-	RootContactItem* pItemName = new RootContactItem(false, ui.treeWidget);
+		pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+		//设置data区分根项子项
+		pRootItem->setData(0, Qt::UserRole, 0);
+		RootContactItem* pItemName = new RootContactItem(false, ui.treeWidget);
+	
+		ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
+	
+		//当前聊天群名
+		QString strGroupName;
+		QSqlQuery queryGroupName(QString("SELECT department_name FROM tab_department WHERE departmentID = %1").arg(m_talkId));
+		queryGroupName.exec();
+		if (queryGroupName.next())
+		{
+			strGroupName = queryGroupName.value(0).toString();	//从查询结果中获取部门名称，作为当前聊天群的名称，例如可以通过查询数据库来获取对应的部门信息，并将部门名称作为聊天窗口的标题等
+		}
+		
+		//getComDepID()
+		QSqlQueryModel queryEmployeeModel;
+		if (getComDepID() == m_talkId.toInt())	//公司群
+		{
+			queryEmployeeModel.setQuery("SELECT employeeID FROM tab_employees WHERE status = 1");
+		}
+		else
+		{
+			queryEmployeeModel.setQuery(QString("SELECT employeeID FROM tab_employees WHERE status = 1 AND departmentID = %1").arg(m_talkId));
 
-	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
+		}
+		int nEmployeeNum = queryEmployeeModel.rowCount();	//获取总行数
 
-	int nEmployeeNum = 5;		//假设公司有50个员工
-	QString qsGroupName = QString("人事群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
-	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
 
-	//插入分组节点
-	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
-	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
-
-	//展开
-	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
-	for (int i = 0; i < nEmployeeNum; ++i)
-	{
-		addPeopleInfo(pRootItem);
-	}
-}
-
-void TalkWindow::initDevelopTalk()
-{
-	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
-	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
-	//设置data区分根项子项
-	pRootItem->setData(0, Qt::UserRole, 0);
-	RootContactItem* pItemName = new RootContactItem(false, ui.treeWidget);
-
-	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
-
-	int nEmployeeNum = 32;		//假设公司有50个员工
-	QString qsGroupName = QString("研发群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
-	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
-
-	//插入分组节点
-	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
-	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
-
-	//展开
-	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
-	for (int i = 0; i < nEmployeeNum; ++i)
-	{
-		addPeopleInfo(pRootItem);
-	}
-}
-
-void TalkWindow::iniMarketTalk()
-{
-	QTreeWidgetItem* pRootItem = new QTreeWidgetItem;
-	pRootItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
-	//设置data区分根项子项
-	pRootItem->setData(0, Qt::UserRole, 0);
-	RootContactItem* pItemName = new RootContactItem(false, ui.treeWidget);
-
-	ui.treeWidget->setFixedHeight(646);			//shell高度-shell头高（talkwindow title）
-
-	int nEmployeeNum = 8;		//假设公司有50个员工
-	QString qsGroupName = QString("市场群 %1/%2").arg(0).arg(nEmployeeNum);	//公司群名称
-	pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
-
-	//插入分组节点
-	ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
-	ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
-
-	//展开
-	pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
-	for (int i = 0; i < nEmployeeNum; ++i)
-	{
-		addPeopleInfo(pRootItem);
-	}
+		QString qsGroupName = QString("%1 %2/%3").arg(strGroupName).arg(0).arg(nEmployeeNum);	//公司群名称
+		pItemName->setText(qsGroupName);	//设置树控件项的文本为公司群名称
+	
+		//插入分组节点
+		ui.treeWidget->addTopLevelItem(pRootItem);	//将树控件项添加到树控件的顶层，显示在树控件中
+		ui.treeWidget->setItemWidget(pRootItem, 0, pItemName);	//将树控件项设置为树控件的子控件，显示在树控件中
+	
+		//展开
+		pRootItem->setExpanded(true);	//将树控件项设置为展开状态，显示其子项
+		for (int i = 0; i < nEmployeeNum; ++i)
+		{
+			QModelIndex modelIndex = queryEmployeeModel.index(i, 0);	//获取查询结果中的模型索引，例如可以通过查询数据库来获取对应的员工信息，并将员工ID作为添加员工信息的参数等
+			int employeeID = queryEmployeeModel.data(modelIndex).toInt();	//从查询结果中获取员工ID，例如可以通过查询数据库来获取对应的员工信息，并将员工ID作为添加员工信息的参数等
+			//添加子节点
+			addPeopleInfo(pRootItem,employeeID);
+		}
 }
 
 void TalkWindow::initPtoPTalk()
@@ -271,4 +381,9 @@ void TalkWindow::onSendBtnClicked(bool)
 	ui.textEdit->deletAllEmotionImage();	//删除消息输入框中的所有表情图片，例如在发送消息后可以调用消息输入框的deletAllEmotionImage()函数来删除输入框中的所有表情图片，以便用户可以继续输入新的消息内容等
 	ui.msgWidget->appendMsg(html);	//收信息窗口添加信息
 
+}
+
+QString TalkWindow::getTalkId()
+{
+	return m_talkId;	//返回聊天窗口的ID，例如在需要获取聊天窗口对象时可以通过聊天窗口的ID来查找对应的聊天窗口对象，并进行相应的操作，例如显示聊天窗口、关闭聊天窗口等
 }

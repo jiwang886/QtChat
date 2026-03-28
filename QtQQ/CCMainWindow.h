@@ -8,10 +8,11 @@ class CCMainWindow : public BasicWindow
     Q_OBJECT
 
 public:
-    CCMainWindow(QWidget *parent = nullptr);
+    CCMainWindow(QString account, bool isAccountLOgin,QWidget *parent = nullptr);
     ~CCMainWindow();
 
 	void initControl();		//初始化控件
+	QString getHeadPicturePath();		//获取头像图片路径，例如可以通过查询数据库来获取用户的头像图片路径，并返回给调用者，以便在界面上显示用户的头像图片
     void setUserName(const QString& username);		//设置用户名
 	void setHeadPixmap(const QPixmap& headPath);		//设置用户头像
 	void setLevelPixmap(int level);		//设置用户等级
@@ -24,7 +25,7 @@ public:
 
 private:
 	void updateSearchStyle();		//更新搜索框的样式，根据搜索框是否有文本来改变样式，例如显示或隐藏搜索图标等
-	void addCompanyDeps(QTreeWidgetItem* pRootGroupItem, const QString& sDeps);		//添加公司部门到树形控件中，根据部门信息创建树形项，并添加到树形控件中，例如根据部门名称、部门ID等信息来创建树形项
+	void addCompanyDeps(QTreeWidgetItem* pRootGroupItem, int DepID);		//添加公司部门到树形控件中，根据部门信息创建树形项，并添加到树形控件中，例如根据部门名称、部门ID等信息来创建树形项
 private:
 	void resizeEvent(QResizeEvent* event) override;		//重置窗口大小事件，调整控件位置和大小
 	bool eventFilter(QObject* watched, QEvent* event) override;		//事件过滤器，处理特定事件，例如鼠标点击等
@@ -39,6 +40,9 @@ private slots:
 	
 private:
     Ui::CCMainWindowClass ui;
-	QMap<QTreeWidgetItem*, QString>m_groupMap;	//部门树形项与部门ID的映射关系，方便后续通过树形项来获取对应的部门ID，例如在点击树形项时可以通过这个映射关系来获取部门ID，并进行相应的操作，例如显示部门信息等
+	bool m_isAccountLogin;			//判断是不是账号登录
+	QString  m_account;		//用户账号
+	
+	//QMap<QTreeWidgetItem*, QString>m_groupMap;	//部门树形项与部门ID的映射关系，方便后续通过树形项来获取对应的部门ID，例如在点击树形项时可以通过这个映射关系来获取部门ID，并进行相应的操作，例如显示部门信息等
 };
 
