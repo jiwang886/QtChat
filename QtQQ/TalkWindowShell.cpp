@@ -140,7 +140,6 @@ void TalkWindowShell::initTcpSocket()
 {
 	m_tcpClientSocket = new QTcpSocket(this);		//创建一个新的TCP套接字对象
 	m_tcpClientSocket->connectToHost("127.0.0.1", gtcpPort);	//连接到服务器的IP地址和端口号，可以根据实际需求修改为服务器的IP地址和端口号等
-
 }
 
 void TalkWindowShell::getEmployeesID(QStringList& employeesList)
@@ -267,23 +266,25 @@ void TalkWindowShell::updateSendTcpMsg(QString& strData, int& msgType, QString f
 	else
 		strGroupFlag = "0";
 
-	int dataLength = strData.length();		//获取文本数据的字节长度，使用UTF-8编码方式计算长度，确保中文字符等多字节字符的长度计算正确
-	const int sourceLength = dataLength;		//文本信息的长度约定为5位，如果数据长度不足5位，则需要在数据前面补0，保证数据包格式的一致性
+	//int dataLength = strData.length();		//获取文本数据的字节长度，使用UTF-8编码方式计算长度，确保中文字符等多字节字符的长度计算正确
+	//const int sourceLength = dataLength;		//文本信息的长度约定为5位，如果数据长度不足5位，则需要在数据前面补0，保证数据包格式的一致性
+	int nstrDataL = strData.length();	//获取文本数据的字节长度，使用UTF-8编码方式计算长度，确保中文字符等多字节字符的长度计算正确
+	int dataLength = QString::number(nstrDataL).length();//文本信息的长度约定为5位，如果数据长度不足5位，则需要在数据前面补0，保证数据包格式的一致性
 	QString strdataLength;
 
 	if (msgType == 1)	//发送文本信息
 	{
 		//文本信息的长度约定为5位
 		if(dataLength == 1)	//hello等文本信息长度为1字节时，数据长度部分需要补0，保证数据包格式的一致性
-			strdataLength = "0000" + QString::number(sourceLength);
+			strdataLength = "0000" + QString::number(nstrDataL);
 		else if (dataLength == 2)
-			strdataLength = "000" + QString::number(sourceLength);
+			strdataLength = "000" + QString::number(nstrDataL);
 		else if (dataLength == 3)
-			strdataLength = "00" + QString::number(sourceLength);
+			strdataLength = "00" + QString::number(nstrDataL);
 		else if (dataLength == 4)
-			strdataLength = "0" + QString::number(sourceLength);
+			strdataLength = "0" + QString::number(nstrDataL);
 		else if (dataLength == 4)
-			strdataLength =QString::number(sourceLength);
+			strdataLength =QString::number(nstrDataL);
 		else
 		{
 			QMessageBox::information(this, "提示", "文本信息长度超过约定长度限制，无法发送！");		//如果文本信息长度超过约定长度限制，弹出提示信息框，告知用户发送失败，并返回
