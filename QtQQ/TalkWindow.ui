@@ -703,6 +703,9 @@
             <property name="text">
              <string>发送</string>
             </property>
+            <property name="shortcut">
+             <string>Return</string>
+            </property>
             <property name="titleskin" stdset="0">
              <bool>true</bool>
             </property>

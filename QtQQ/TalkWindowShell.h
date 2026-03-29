@@ -4,7 +4,7 @@
 #include "ui_TalkWindowShell.h"
 #include <QMap>
 #include <QTcpSocket>
-
+#include <QUdpSocket>
 
 class TalkWindow;
 class TalkWindowItem;
@@ -12,6 +12,7 @@ class QListWidgetItem;
 class EmotionWindow;
 
 const int gtcpPort = 8888;		//TCP通信端口号，可以根据实际需求进行修改，例如设置为一个未被占用的端口号，确保通信的正常进行
+const int gudpPort = 6666;		//UDP通信端口号，可以根据实际需求进行修改，例如设置为一个未被占用的端口号，确保通信的正常进行
 
 enum GroupType
 {
@@ -39,6 +40,7 @@ public:
 private:
 	void initControl();		//初始化控件
 	void initTcpSocket();		//初始化TCP套接字
+	void initUdpSocket();		//初始化UDP套接字
 
 	void getEmployeesID(QStringList& employeesList);		//获取员工ID列表，可以根据实际需求进行修改，例如从数据库中获取员工ID列表，或者从文件中读取员工ID列表等
 	bool createJSFile(QStringList& employeesList);		//创建JS文件，保存员工列表等信息，可以根据实际需求进行修改		
@@ -54,6 +56,7 @@ public slots:
 private slots:
 	void onTalkWindowItemClicked(QListWidgetItem* item);		//聊天窗口列表项被点击的槽函数
 	void onEmotionBtnClicked(int emotionNum);		//表情按钮被点击的槽函数
+	void processPendingData();		//处理UDP套接字中待处理的数据的槽函数
 
 private:
 	Ui::TalkWindowClass ui;
@@ -62,5 +65,6 @@ private:
 
 private:
 	QTcpSocket* m_tcpClientSocket;		//TCP客户端套接字
+	QUdpSocket* m_udpReceicer;		//UDP接收端
 };
 

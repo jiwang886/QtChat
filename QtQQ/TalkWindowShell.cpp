@@ -7,6 +7,7 @@
 #include <QSqlQueryModel>
 #include <QMessageBox>
 #include <QFile>
+#include <QSqlQuery>
 
 extern QString gLoginEmployeeID;		//全局变量，保存当前登录员工的ID，可以在其他类中使用，例如在获取员工ID列表时可以排除当前登录员工的ID等
 
@@ -17,6 +18,7 @@ TalkWindowShell::TalkWindowShell(QWidget *parent)
 	setAttribute(Qt::WA_DeleteOnClose);	//设置窗口关闭时自动删除对象，避免内存泄漏	
 	initControl();
 	initTcpSocket();
+	initUdpSocket();
 
 	QStringList employeesIDList;
 	getEmployeesID(employeesIDList);		//获取员工ID列表，可以根据实际需求进行修改，例如从数据库中获取员工ID列表，或者从文件中读取员工ID列表等
@@ -120,6 +122,105 @@ void TalkWindowShell::onEmotionBtnClicked(int emotionNum)
 	}
 
 }
+/**********************************************************************************************
+数据包格式
+文本数据包格式：群聊标志+发信息人ID+收消息人（群）ID+消息类型（1）+数据长度+文本数据
+表情数据包格式：群聊标志+发信息人ID+收消息人（群）ID+消息类型（0）+数据个数+images+表情名称
+文件数据包格式：群聊标志+发信息人ID+收消息人（群）ID+消息类型（2）+文件字节数+bytes+文件名+data_begin+文件数据
+
+群聊标志占1位：1表示群聊，0表示私聊
+信息类型占1位：0表示表情，1表示文本，2表示文件
+
+ID号占5位，群ID占4位，数据长度占5位，表情名称占3位
+（注意：当群聊标志为1，则数据包中没有收信息员工ID而是收消息群ID
+		当群聊标志为0，则数据包中没有收信息群ID而是收消息员工ID）
+
+群聊文本信息如：1 10001 2001 1 00005 Hello
+				0 10004 10001 0 1 images 006
+				1 10001 2001 2 10 bytes test.txt data_begin helloworld
+************************************************************************************************/
+void TalkWindowShell::processPendingData()
+{
+	while (m_udpReceicer->hasPendingDatagrams())		//检查UDP套接字中是否有待处理的数据报，如果有则继续处理，否则退出函数
+	{
+		const static int groupFlagWidth = 1;		//群聊标志占1位
+		const static int groupWidth = 4;			//群ID占4位
+		const static int employeeWidth = 5;		//员工ID占5位
+		const static int msgTypeWidth = 1;			//消息类型占1位
+		const static int msgLengthWidth = 5;		//文本数据长度占5位
+		const static int pictureWidth = 3;		//表情占3位
+
+
+		QByteArray btData;		//创建一个字节数组对象，用于存储接收到的数据报内容
+		btData.resize(m_udpReceicer->pendingDatagramSize());		//调整字节数组的大小，以适应接收到的数据报的大小
+		m_udpReceicer->readDatagram(btData.data(), btData.size());		//读取数据报内容，并将其存储在字节数组中，使用readDatagram函数可以同时获取数据报的内容和发送者的地址等信息，可以根据实际需求进行处理，例如根据发送者的地址判断是来自哪个员工或群等
+
+		QString strData = btData.data();		
+		QString strWindowID;	//聊天窗口ID，可以是员工ID或者群ID，根据群聊标志的不同而不同
+		QString strSendEmployeeID, strRecevieEmployeeID;	//发送员工ID和接收员工ID，根据群聊标志的不同而不同
+		QString strMsg;		//数据
+		int msgLen;			//数据长度
+		int msgType;			//消息类型，0表示表情，1表示文本，2表示文件
+
+		strSendEmployeeID = strData.mid(groupFlagWidth, employeeWidth);		//从数据字符串中提取发送员工ID，根据群聊标志的不同而不同，如果是群聊则提取群ID，如果是私聊则提取员工ID
+		//自己发的消息不处理
+		if (strSendEmployeeID == gLoginEmployeeID)
+		{
+			return;		//如果发送员工ID与当前登录员工ID相同，说明是自己发的消息，不需要处理，直接返回函数
+		}
+		if (btData[0] == '1')
+		{
+			//如果是群聊，则提取群ID作为聊天窗口ID
+			strWindowID = strData.mid(groupFlagWidth+employeeWidth, groupWidth);		
+			QChar cMsgType = btData[groupFlagWidth + employeeWidth + groupWidth];		//从数据字符串中提取消息类型，根据群聊标志的不同而不同，如果是群聊则提取群ID，如果是私聊则提取员工ID
+			if (cMsgType == '1')	//文本信息
+			{
+				msgType = 1;		//设置消息类型为文本
+				msgLen = strData.mid(groupFlagWidth + employeeWidth + groupWidth + msgTypeWidth, msgLengthWidth).toInt();		//从数据字符串中提取文本数据长度，根据群聊标志的不同而不同，如果是群聊则提取群ID，如果是私聊则提取员工ID
+				strMsg = strData.mid(groupFlagWidth + employeeWidth + groupWidth + msgTypeWidth + msgLengthWidth, msgLen);		//从数据字符串中提取文本数据，根据群聊标志的不同而不同，如果是群聊则提取群ID，如果是私聊则提取员工ID
+			}
+			else if (cMsgType == '0')	//表情信息
+			{
+				msgType = 0;		//设置消息类型为表情
+				int posImage = strData.indexOf("images");		//在数据字符串中查找表情标志"images"，获取其位置
+				strMsg = strData.right(strData.length() - posImage - QString("images").length());		//从数据字符串中提取表情数据，根据群聊标志的不同而不同，如果是群聊则提取群ID，如果是私聊则提取员工ID
+
+			}
+			else if (cMsgType == '2')	//文件信息
+			{
+				msgType = 2;		//设置消息类型为文件'
+				int bytesWidth = 5;		//文件字节数占5位
+				int posBytes = strData.indexOf("bytes");		//在数据字符串中查找文件标志"bytes"，获取其位置
+				int posDataBegin = strData.indexOf("data_begin");		//在数据字符串中查找文件数据开始标志"data_begin"，获取其位置
+				//文件名称
+				QString fileName = strData.mid(posBytes + bytesWidth, posDataBegin - posBytes - bytesWidth);
+
+				//文件数据
+				int dataLengthWidth;
+				int posData = posDataBegin + QString("data_begin").length();		//文件数据开始位置
+				strMsg = strData.mid(posData);	//从这里开始后面都是文件数据
+				
+				//根据employeeID获取发送者姓名
+				QString sender;
+				int employeeID = strSendEmployeeID.toInt();
+				QSqlQuery queryGroupName(QString("SELECT employee_name FROM tab_employees WHERE employID = %1").arg(employeeID));
+				queryGroupName.exec();
+				
+				if (queryGroupName.next())
+				{
+					sender = queryGroupName.value(0).toString();		//获取查询结果中的员工姓名，作为发送者姓名
+				}
+				//接收文件的后续操作
+
+			}
+		}
+		else
+		{
+
+		}
+
+	}
+}
 
 void TalkWindowShell::onEmotionBtnClicked(bool)
 {
@@ -140,6 +241,17 @@ void TalkWindowShell::initTcpSocket()
 {
 	m_tcpClientSocket = new QTcpSocket(this);		//创建一个新的TCP套接字对象
 	m_tcpClientSocket->connectToHost("127.0.0.1", gtcpPort);	//连接到服务器的IP地址和端口号，可以根据实际需求修改为服务器的IP地址和端口号等
+}
+
+void TalkWindowShell::initUdpSocket()
+{
+	m_udpReceicer = new QUdpSocket(this);		//创建一个新的UDP套接字对象
+	for (quint16 port = gudpPort; port < gudpPort + 200; ++port)
+	{
+		if(m_udpReceicer->bind(port,QUdpSocket::ShareAddress))	//尝试绑定UDP套接字到指定的端口号，使用共享地址模式，如果绑定成功则退出循环，否则继续尝试下一个端口号，直到找到一个可用的端口号或者达到最大端口号限制
+			break;
+	}
+	connect(m_udpReceicer, &QUdpSocket::readyRead, this, &TalkWindowShell::processPendingData);
 }
 
 void TalkWindowShell::getEmployeesID(QStringList& employeesList)
