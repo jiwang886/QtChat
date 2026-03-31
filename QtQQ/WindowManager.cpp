@@ -39,6 +39,11 @@ void WindowManager::addWindowName(const QString& qsWindowName, QWidget* qWidget)
 	}
 }
 
+QString WindowManager::getCreatingTalkId()
+{
+	return m_strCreatingTalkId;
+}
+
 void WindowManager::addNewTalkWindow(const QString& uid/*, GroupType groupType, const QString& strPeople*/)
 {
 	if (m_talkWindowShell == nullptr)
@@ -49,9 +54,12 @@ void WindowManager::addNewTalkWindow(const QString& uid/*, GroupType groupType, 
 	QWidget* widget = findWindowName(uid);		//通过窗口名称获取对应的窗口对象
 	if (!widget)
 	{
+		m_strCreatingTalkId = uid;		
 		TalkWindow* talkwindow = new TalkWindow(m_talkWindowShell,uid/*,groupType*/);		//如果窗口对象不存在，创建一个新的TalkWindow对象，并传入相关参数，例如用户ID、群组类型、人员信息等
 		TalkWindowItem* talkwindowItem = new TalkWindowItem(talkwindow);		//创建一个新的TalkWindowItem对象
-	
+		
+		m_strCreatingTalkId = "";		//将正在创建的聊天窗口的ID置空，表示当前没有正在创建的聊天窗口
+
 		//判断是群聊还是私聊
 		QSqlQueryModel sqlDepMpodel;
 		QString strSql = QString("SELECT department_name,sign FROM tab_department WHERE departmentID = %1").arg(uid);

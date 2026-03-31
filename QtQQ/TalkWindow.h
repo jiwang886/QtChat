@@ -18,6 +18,7 @@ public:
 	QString getTalkId();	//获取聊天窗口的ID，根据聊天窗口的ID来获取对应的聊天窗口对象，例如在打开聊天窗口时可以通过聊天窗口的ID来查找对应的聊天窗口对象，并进行相应的操作，例如显示聊天窗口、关闭聊天窗口等
 
 private slots:
+	void onfileOpenBtnClicked(bool);		//文件按钮被点击的槽函数，处理发送文件的逻辑，例如打开文件选择对话框，获取用户选择的文件路径，并将文件发送给聊天窗口中的其他用户等
 	void onSendBtnClicked(bool);		//发送按钮被点击的槽函数，处理发送消息的逻辑，例如获取消息输入框中的文本内容，创建一个新的消息对象，并将其添加到聊天窗口的消息列表中等
 	void onItemDoubleClicked(QTreeWidgetItem* item, int column);	//树形控件项被双击的槽函数
 
@@ -42,6 +43,6 @@ private:
 	
 	//GroupType m_groupType;	//群组类型，例如公司群、部门群、私聊等，根据群组类型来设置聊天窗口的标题和聊天窗口列表项的内容等
 	QMap<QTreeWidgetItem*, QString>m_groupPeopleMap;	//群组成员信息映射表，使用一个QMap来存储群组成员的信息，例如将群组成员的树形控件项作为键，成员的用户ID作为值，在需要获取成员信息时可以通过树形控件项来查找对应的用户ID，并进行相应的操作，例如显示成员的头像、昵称等
-
+	friend class TalkWindowShell;	//友元类
 };
 

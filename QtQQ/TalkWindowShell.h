@@ -44,6 +44,7 @@ private:
 
 	void getEmployeesID(QStringList& employeesList);		//获取员工ID列表，可以根据实际需求进行修改，例如从数据库中获取员工ID列表，或者从文件中读取员工ID列表等
 	bool createJSFile(QStringList& employeesList);		//创建JS文件，保存员工列表等信息，可以根据实际需求进行修改		
+	void handleReceivedMsg(int senderEmployeeID,int msgType,QString strMsg);		//处理接收到的数据
 
 public slots:
 	void onEmotionBtnClicked(bool);		//表情按钮被点击的槽函数，仅判断

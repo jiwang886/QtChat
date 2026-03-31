@@ -8,7 +8,7 @@ class QMsgTextEdit  : public QTextEdit
 
 		
 public:
-	QMsgTextEdit(QWidget *parent);
+	QMsgTextEdit(QWidget *parent = NULL);
 	~QMsgTextEdit();
 
 private slots:

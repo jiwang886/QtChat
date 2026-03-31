@@ -14,6 +14,7 @@
 #include <QApplication>
 #include <QSqlQuery>
 
+QString gstrLoginHeadPath;
 extern QString gLoginEmployeeID;		//全局变量，保存登录员工的ID，例如在登录成功后将员工ID保存到这个变量中，以便在后续的操作中使用，例如在获取员工信息时可以通过这个变量来查询数据库等
 
 class CoustomProxyStyle :public QProxyStyle		//自定义样式类，继承自QProxyStyle，可以重写其中的绘制方法来实现自定义的界面风格
@@ -118,7 +119,7 @@ QString CCMainWindow::getHeadPicturePath()
 		queryPicture.next();
 		strPicturePath = queryPicture.value(0).toString();		//从数据库中查询员工的头像路径，并将其保存到strPicturePath变量中
 	}
-
+	gstrLoginHeadPath = strPicturePath;		//将查询到的头像路径保存到全局变量gstrLoginHeadPath中，以便在其他地方使用，例如在聊天窗口中显示用户的头像等
 	return strPicturePath;
 }
 

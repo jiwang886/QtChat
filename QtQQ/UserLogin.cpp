@@ -18,6 +18,10 @@ UserLogin::UserLogin(QWidget *parent)
 	setTitleBarTitle("",":/Resources/MainWindow/qqlogoclassic.png");		//设置标题栏内容
 	loadStyleSheet("UserLogin");		//加载样式表
 	initControl();			//初始化控件
+
+	connect(m_TitleBar, &TitleBar::signalButtonCloseClicked, [=](){
+		qApp->quit();
+		});
 }
 
 

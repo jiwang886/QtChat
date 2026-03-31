@@ -8,6 +8,7 @@
 #include <QMessageBox>
 #include <QSqlQueryModel>
 #include <QSqlQuery>
+#include "SendFile.h"
 
 TalkWindow::TalkWindow(QWidget *parent, const QString& uid/*, GroupType groupType*/)
 	: QWidget(parent), m_talkId(uid)//, m_groupType(groupType)	
@@ -65,6 +66,8 @@ void TalkWindow::initControl()
 	
 	connect(ui.faceBtn, SIGNAL(clicked(bool)), parent(), SLOT(onEmotionBtnClicked(bool)));
 	connect(ui.sendBtn, SIGNAL(clicked(bool)), this, SLOT(onSendBtnClicked(bool)));
+
+	connect(ui.fileopenBtn, SIGNAL(clicked(bool)), this, SLOT(onfileOpenBtnClicked(bool)));
 
 	connect(ui.treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(onItemDoubleClicked(QTreeWidgetItem*, int)));
 
@@ -345,6 +348,13 @@ void TalkWindow::initPtoPTalk()
 	sizes << 1 << 0;
 	ui.splitter->setSizes(sizes);	//将设置好的大小列表应用到分割器控件上，调整左右控件的大小比例，例如在个人聊天窗口中可以将左侧的树形控件和右侧的消息显示区域的大小设置为不同的比例，以便更好地展示聊天内容等
 }
+
+void TalkWindow::onfileOpenBtnClicked(bool)
+{
+	SendFile* sendFile = new SendFile(this);	//创建一个发送文件的对话框对象，例如可以在发送文件按钮被点击时创建一个新的发送文件对话框对象，并显示在聊天窗口中等
+	sendFile->show();	//显示发送文件对话框，例如可以调用发送文件对话框的show()函数来显示对话框，让用户选择要发送的文件等
+}
+
 void TalkWindow::onSendBtnClicked(bool)
 {
 	if (ui.textEdit->toPlainText().isEmpty())

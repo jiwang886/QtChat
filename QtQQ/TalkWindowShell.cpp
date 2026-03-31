@@ -8,8 +8,12 @@
 #include <QMessageBox>
 #include <QFile>
 #include <QSqlQuery>
+#include "WindowManager.h"
+#include "ReceiveFile.h"
 
 extern QString gLoginEmployeeID;		//全局变量，保存当前登录员工的ID，可以在其他类中使用，例如在获取员工ID列表时可以排除当前登录员工的ID等
+QString gfileName;		//文件名称
+QString gfileData;		//文件数据
 
 TalkWindowShell::TalkWindowShell(QWidget *parent)
 	: BasicWindow(parent)
@@ -194,12 +198,14 @@ void TalkWindowShell::processPendingData()
 				int posDataBegin = strData.indexOf("data_begin");		//在数据字符串中查找文件数据开始标志"data_begin"，获取其位置
 				//文件名称
 				QString fileName = strData.mid(posBytes + bytesWidth, posDataBegin - posBytes - bytesWidth);
+				gfileName = fileName;		//将文件名称保存到全局变量中，供其他函数使用，例如在接收文件数据时可以使用这个文件名称来保存文件等
 
 				//文件数据
 				int dataLengthWidth;
 				int posData = posDataBegin + QString("data_begin").length();		//文件数据开始位置
 				strMsg = strData.mid(posData);	//从这里开始后面都是文件数据
-				
+				gfileData = strMsg;		//将文件数据保存到全局变量中，供其他函数使用，例如在接收文件数据时可以使用这个文件数据来保存文件等
+
 				//根据employeeID获取发送者姓名
 				QString sender;
 				int employeeID = strSendEmployeeID.toInt();
@@ -211,16 +217,145 @@ void TalkWindowShell::processPendingData()
 					sender = queryGroupName.value(0).toString();		//获取查询结果中的员工姓名，作为发送者姓名
 				}
 				//接收文件的后续操作
+				ReceiveFile* recvFile = new ReceiveFile(this);
+				connect(recvFile, &ReceiveFile::refuseFile, [this]() {
+					return;
+					});
+				QString msgLabel = QString("收到来自%1发送的文件 %2，是否接受？").arg(sender).arg(fileName);		//构造提示信息，告知用户有文件要接收，并询问是否接受
+				recvFile->setMsg(msgLabel);
+				recvFile->show();		//显示接收文件的窗口，等待用户的操作，例如接受或拒绝文件等
+			}
+		}
+		else		//私聊
+		{
+			strRecevieEmployeeID = strData.mid(groupFlagWidth + employeeWidth, employeeWidth);		//如果是私聊，则提取接收员工ID作为聊天窗口ID
+			strWindowID = strSendEmployeeID;	//窗口ID就是发送者ID
+
+			//判断接收者对象是我吗
+			if (strRecevieEmployeeID != gLoginEmployeeID)
+			{
+				return;		//如果接收员工ID与当前登录员工ID不同，说明消息不是发给自己的，不需要处理，直接返回函数
+			}
+
+			//获取信息类型
+			QChar cMsgType = btData[groupFlagWidth + employeeWidth + employeeWidth];		//从数据字符串中提取消息类型，根据群聊标志的不同而不同，如果是群聊则提取群ID，如果是私聊则提取员工ID
+			if (cMsgType == '1')		//文本信息
+			{
+				msgType = 1;
+				//文本数据长度
+				msgLen = strData.mid(groupFlagWidth + employeeWidth + employeeWidth + msgTypeWidth, msgLengthWidth).toInt();		
+				strMsg = strData.mid(groupFlagWidth + employeeWidth + employeeWidth + msgTypeWidth + msgLengthWidth, msgLen);
+
+			}
+			else if (cMsgType == '0')		//表情信息
+			{
+				msgType = 0;
+				int posImages = strData.indexOf("images");
+				strMsg = strData.mid(posImages + 6);
+			}
+			else if (cMsgType == '2')		//文件信息
+			{
+				msgType = 2;
+				int posBytes = strData.indexOf("bytes");
+				int bytesWidth = 5;		//文件字节数占5位
+				int posDataBegin = strData.indexOf("data_begin");
+				int data_beginWidth = 10;		//文件数据开始标志"data_begin"占10位
+
+				QString fileName = strData.mid(posBytes + bytesWidth, posDataBegin - posBytes - bytesWidth);
+				gfileName = fileName;		//将文件名称保存到全局变量中，供其他函数使用，例如在接收文件数据时可以使用这个文件名称来保存文件等
+				//文件内容
+				strMsg = strData.mid(posDataBegin + data_beginWidth);
+				gfileData = strMsg;		//将文件数据保存到全局变量中，供其他函数使用，例如在接收文件数据时可以使用这个文件数据来保存文件等
+
+				//根据employeeID获取发送者姓名
+				QString sender;
+				int employeeID = strSendEmployeeID.toInt();
+				QSqlQuery querySenderName(QString("SELECT employee_name FROM tab_employees WHERE employID = %1").arg(employeeID));
+				querySenderName.exec();
+
+				if (querySenderName.next())
+				{
+					sender = querySenderName.value(0).toString();		//获取查询结果中的员工姓名，作为发送者姓名
+				}
+
+				//接收文件的后续操作
+				ReceiveFile* recvFile = new ReceiveFile(this);
+				connect(recvFile, &ReceiveFile::refuseFile, [this]() {
+					return;
+					});
+				QString msgLabel = QString("收到来自%1发送的文件 %2，是否接受？").arg(sender).arg(fileName);		//构造提示信息，告知用户有文件要接收，并询问是否接受
+				recvFile->setMsg(msgLabel);
+				recvFile->show();		//显示接收文件的窗口，等待用户的操作，例如接受或拒绝文件等
 
 			}
 		}
-		else
-		{
 
+		//将聊天窗口设为活动窗口
+		QWidget* widget = WindowManager::getInstance()->findWindowName(strWindowID);
+		if (widget)		//如果找到对应的聊天窗口对象
+		{
+			this->setCurrentTalkWindow(widget);		//如果找到对应的聊天窗口对象，则将其设置为当前显示的聊天窗口，显示该聊天窗口的内容
+			
+			//同步激活左侧聊天窗
+			QListWidgetItem* item = m_talkwindowItemMap.key(widget);
+			item->setSelected(1);
 		}
+		else	//如果没有找到对应的聊天窗口对象
+		{
+			return;		
+		}
+		//文件信息另外处理
+		if(msgType != 2)
+			handleReceivedMsg(strSendEmployeeID.toInt(), msgType, strMsg);		//调用处理接收到的数据的函数，传入发送员工ID、消息类型和消息内容，根据实际需求进行处理，例如将消息显示在聊天窗口中等
 
 	}
 }
+
+void TalkWindowShell::handleReceivedMsg(int senderEmployeeID, int msgType, QString strMsg)
+{
+	QMsgTextEdit msgTextEdit;		//创建一个消息文本编辑对象，用于显示接收到的消息内容
+
+	if (msgType == 1)
+	{
+		msgTextEdit.setText(strMsg);		//将接收到的消息内容设置到消息文本编辑对象中
+	}
+	else if(msgType == 0)	//表情信息
+	{
+		const int emotionWidth = 3;		//表情图片的宽度，可以根据实际需求进行调整
+		int emotionNum = strMsg.length() / emotionWidth;		//根据表情数据的长度和每个表情占用的宽度，计算出表情的数量
+		for (int i = 0; i < emotionNum; i++)
+		{
+			msgTextEdit.addEmotionUrl(strMsg.mid(i * emotionWidth, emotionWidth).toInt());
+		}
+	}
+	QString html = msgTextEdit.document()->toHtml();		//将消息文本编辑对象中的文本内容转换为HTML格式，可以根据实际需求进行格式化处理，例如添加发送者姓名、时间戳等信息等
+
+	//文本html如果没有字体则添加,msgFont.txt
+	if (!html.contains(".png") && !html.contains("</span>"))
+	{
+		QString fontHtml;
+		QFile file(":/Resources/MainWindow/MsgHtml/msgFont.txt");	//加载消息字体样式文件，例如可以将消息字体样式保存在资源文件中，并在发送消息时加载该文件来设置消息的字体样式等
+		if (file.open(QIODevice::ReadOnly))
+		{
+			fontHtml = file.readAll();	//读取消息字体样式文件的内容，例如可以将文件内容保存到一个字符串变量中，以便在发送消息时将该样式应用到消息内容中等
+			fontHtml.replace("%1", strMsg);	//将消息内容替换到消息字体样式中，例如可以在消息字体样式文件中使用占位符来表示消息内容，并在发送消息时将占位符替换为实际的消息内容等
+			file.close();
+		}
+		else
+		{
+			QMessageBox::information(this, "提示", "消息字体样式文件加载失败！");	//如果消息字体样式文件加载失败，则显示一个提示信息框，告知用户消息字体样式文件加载失败等
+		}
+		if (!html.contains(fontHtml))
+		{
+			html.replace(strMsg, fontHtml);
+		}
+	}
+	TalkWindow* talkWindow = dynamic_cast<TalkWindow*>(ui.rightStackedWidget->currentWidget());		//获取当前显示的聊天窗口，并将其转换为TalkWindow类型的指针
+	//不能直接访问记得在talkwindow.h添加友元
+	talkWindow->ui.msgWidget->appendMsg(html,QString::number(senderEmployeeID));		//调用聊天窗口的appendMsg函数，将发送员工ID和消息内容添加到聊天窗口中，显示该消息内容，可以根据实际需求进行格式化处理，例如添加发送者姓名、时间戳等信息等
+
+}
+
 
 void TalkWindowShell::onEmotionBtnClicked(bool)
 {
@@ -360,6 +495,8 @@ bool TalkWindowShell::createJSFile(QStringList& employeesList)
 		return false;		//如果文件打开失败，弹出提示信息框，告知用户读取失败，并返回false表示创建JS文件失败
 	}
 }
+
+
 
 //客户端发送Tcp数据（数据，数据类型，文件）
 //文本数据包格式：群聊标志 + 发信息员工ID + 收消息员工ID(群ID) + 信息类型 + 数据长度 + 数据

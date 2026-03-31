@@ -13,7 +13,7 @@ class MsgHtmlObj :public QObject
 	Q_PROPERTY(QString msgRHtmlTmpl MEMBER m_msgRHtmlTmpl NOTIFY signalMsgHtml)
 
 public:
-	MsgHtmlObj(QObject* parent);
+	MsgHtmlObj(QObject* parent, QString msgLPicPath = "");//发信息来的人的头像路径
 
 signals:
 	void signalMsgHtml(const QString& html);		//消息HTML模板改变的信号，通知聊天窗口更新消息显示，例如当消息内容发生改变时，可以发出这个信号来通知聊天窗口重新渲染消息内容
@@ -23,6 +23,7 @@ private:
 	QString getMsgTmplHtml(const QString& code);		//获取消息HTML模板
 
 private:
+	QString m_msgLPicPath;	//发信息来的人的头像路径，使用一个QString来存储发信息来的人的头像路径
 	QString m_msgLHtmlTmpl;		//消息HTML模板，使用一个QString来存储消息的HTML模板
 	QString m_msgRHtmlTmpl;		//消息HTML模板，使用一个QString来存储消息的HTML模板
 
@@ -49,7 +50,7 @@ class MsgWebView  : public QWebEngineView
 	Q_OBJECT
 
 public:
-	MsgWebView(QWidget *parent);
+	MsgWebView(QWidget* parent);	
 	~MsgWebView();
 
 	void appendMsg(const QString& html,QString strObj = "0");	//在消息显示区域追加消息内容，例如当收到一条新消息时，可以调用这个方法来将消息内容追加到聊天窗口的消息显示区域
@@ -64,5 +65,6 @@ signals:
 
 private:
 	MsgHtmlObj* m_msgHtmlObj;	//消息HTML对象，使用一个MsgHtmlObj对象来存储消息的HTML内容
+	QWebChannel* m_webChannel;	//WebChannel对象，使用一个QWebChannel对象来实现JavaScript与C++之间的通信
 };
 
